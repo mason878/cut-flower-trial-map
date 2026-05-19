@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Green Legacy 2026 Cut Flower Trial Garden Map</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f0; color: #333; }
+
+  .header { background: #2d5016; color: white; padding: 18px 24px; text-align: center; }
+  .header h1 { font-size: 22px; margin-bottom: 4px; }
+  .header p { font-size: 13px; opacity: 0.85; }
+
+  .tabs { display: flex; background: #3a6b1e; }
+  .tab { flex: 1; text-align: center; padding: 10px; color: white; cursor: pointer; font-size: 14px; font-weight: 600; border-bottom: 3px solid transparent; transition: 0.2s; }
+  .tab:hover { background: rgba(255,255,255,0.1); }
+  .tab.active { border-bottom-color: #ffd700; background: rgba(255,255,255,0.15); }
+
+  .view { display: none; padding: 16px; }
+  .view.active { display: block; }
+
+  /* OVERVIEW */
+  .garden-container { overflow-x: auto; padding: 10px 0; }
+  .garden { display: flex; flex-direction: column; align-items: center; min-width: 1100px; gap: 4px; }
+  .row-group { display: flex; align-items: stretch; width: 100%; }
+  .row-label { width: 90px; min-width: 90px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 11px; font-weight: 700; color: #555; padding: 2px 4px; text-align: center; }
+  .row-label .season { font-size: 9px; color: #888; margin-top: 2px; }
+  .bed-half { display: flex; flex: 1; gap: 1px; }
+  .center-aisle { width: 30px; min-width: 30px; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #999; writing-mode: vertical-lr; background: #e8e4d8; border-radius: 3px; }
+  .plot { flex: 1; min-width: 0; padding: 4px 2px; border-radius: 3px; cursor: pointer; text-align: center; display: flex; flex-direction: column; justify-content: center; transition: 0.15s; border: 1px solid rgba(0,0,0,0.08); }
+  .plot:hover { transform: scale(1.03); z-index: 5; box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+  .plot .pname { font-size: 8px; font-weight: 700; line-height: 1.15; overflow: hidden; }
+  .plot .pinfo { font-size: 7px; opacity: 0.7; margin-top: 1px; }
+
+  .walkway { height: 12px; width: 100%; display: flex; align-items: center; justify-content: center; }
+  .walkway span { font-size: 8px; color: #aaa; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; justify-content: center; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.15); }
+
+  .compass { position: fixed; bottom: 16px; right: 16px; background: white; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-size: 11px; font-weight: 700; z-index: 100; }
+  .compass .n { position: absolute; top: 3px; }
+  .compass .s { position: absolute; bottom: 3px; font-size: 9px; color: #999; }
+
+  /* BED DETAIL */
+  .bed-detail { max-width: 900px; margin: 0 auto; }
+  .bed-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; justify-content: center; }
+  .bed-btn { padding: 6px 12px; border: 2px solid #ccc; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; background: white; transition: 0.15s; }
+  .bed-btn:hover { border-color: #2d5016; }
+  .bed-btn.active { background: #2d5016; color: white; border-color: #2d5016; }
+
+  .bed-view { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  .bed-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: #2d5016; }
+  .bed-subtitle { font-size: 12px; color: #777; margin-bottom: 14px; }
+
+  .variety-section { margin-bottom: 16px; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; }
+  .variety-header { padding: 8px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 13px; transition: 0.15s; }
+  .variety-header:hover { filter: brightness(0.95); }
+  .variety-header .arrow { transition: 0.2s; }
+  .variety-header .arrow.open { transform: rotate(90deg); }
+  .variety-meta { font-size: 11px; font-weight: 400; opacity: 0.75; }
+
+  .variety-grid-container { padding: 10px; background: #fafaf7; display: none; }
+  .variety-grid-container.open { display: block; }
+  .grid-info { font-size: 11px; color: #666; margin-bottom: 8px; display: flex; gap: 16px; flex-wrap: wrap; }
+  .grid-info span { background: #eee; padding: 2px 8px; border-radius: 10px; }
+
+  .plant-grid { display: inline-grid; gap: 1px; border: 1px solid #ccc; background: #ccc; border-radius: 4px; overflow: hidden; max-height: 400px; overflow-y: auto; }
+  .plant-cell { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 7px; }
+  .plant-cell.soil { background: #d4c9a8; }
+  .plant-cell.plant { background: #6aad3a; border-radius: 50%; margin: 1px; }
+
+  .grid-scale { margin-top: 6px; font-size: 10px; color: #999; }
+
+  /* PLANTING GUIDE */
+  .guide-table { width: 100%; border-collapse: collapse; font-size: 11px; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .guide-table th { background: #2d5016; color: white; padding: 8px 6px; text-align: left; font-size: 11px; position: sticky; top: 0; z-index: 2; }
+  .guide-table td { padding: 6px; border-bottom: 1px solid #eee; }
+  .guide-table tr:hover { background: #f0f7e6; }
+  .guide-table .loc { font-weight: 700; text-align: center; width: 36px; }
+
+  .search-bar { margin-bottom: 12px; }
+  .search-bar input { width: 100%; padding: 10px 14px; border: 2px solid #ccc; border-radius: 6px; font-size: 14px; }
+  .search-bar input:focus { outline: none; border-color: #2d5016; }
+
+  @media print {
+    .tabs, .compass, .search-bar, .bed-selector { display: none !important; }
+    .view { display: block !important; page-break-after: always; }
+    .plot { font-size: 7px !important; }
+  }
+
+  /* Colors per crop type */
+  .c-dahlia { background: #e8a0b0; color: #4a1020; }
+  .c-scabiosa { background: #c8a0d8; color: #3a1050; }
+  .c-matricaria { background: #f0e8a0; color: #504810; }
+  .c-dianthus { background: #f0b0c0; color: #501828; }
+  .c-snapdragon { background: #a0c8e8; color: #103850; }
+  .c-zinnia { background: #e8c080; color: #504010; }
+  .c-limonium { background: #b0d8c0; color: #104828; }
+  .c-gomphrena { background: #d8b0d0; color: #401840; }
+  .c-ageratum { background: #90b8e0; color: #082848; }
+  .c-celosia { background: #e8b898; color: #502810; }
+  .c-sorghum { background: #c8c0a0; color: #383010; }
+  .c-marigold { background: #f0c840; color: #504008; }
+  .c-rudbeckia { background: #e0d060; color: #484008; }
+  .c-craspedia { background: #f0e070; color: #484010; }
+  .c-verbena { background: #c090d0; color: #381050; }
+  .c-sunflower { background: #f0d850; color: #504808; }
+  .c-kale { background: #88c8a0; color: #084028; }
+  .c-empty { background: #e0ddd0; color: #999; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Green Legacy — Summer 2026 Cut Flower Trial Garden</h1>
+  <p>12 Beds (1–6 North &amp; 1–6 South) · 3 ft wide × ~100 ft long · 5 ft walkways</p>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showView('overview')">Garden Overview</div>
+  <div class="tab" onclick="showView('detail')">Bed Detail &amp; Spacing</div>
+  <div class="tab" onclick="showView('guide')">Planting Guide Table</div>
+</div>
+
+<div class="compass"><span class="n">N</span><span class="s">S</span></div>
+
+<!-- ========== VIEW 1: OVERVIEW ========== -->
+<div id="view-overview" class="view active">
+  <div class="garden-container">
+    <div class="garden" id="gardenOverview"></div>
+  </div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<!-- ========== VIEW 2: BED DETAIL ========== -->
+<div id="view-detail" class="view">
+  <div class="bed-detail">
+    <div class="bed-selector" id="bedSelector"></div>
+    <div class="bed-view" id="bedView">
+      <p style="color:#999; text-align:center; padding: 30px;">Select a bed above to view planting detail and spacing grids.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== VIEW 3: PLANTING GUIDE TABLE ========== -->
+<div id="view-guide" class="view">
+  <div class="search-bar"><input type="text" id="searchInput" placeholder="Search by variety, crop, bed number..." oninput="filterGuide()"></div>
+  <div style="overflow-x:auto;">
+    <table class="guide-table" id="guideTable"></table>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// MASTER DATA — all 108 positions
+// ============================================================
+const varieties = [
+  // ROW 1 NORTH (Beds 1-12)
+  {loc:1, name:"Dahlia Karma Amora", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"Syngenta", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  {loc:2, name:"Dahlia Karma Blue Lagoon", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"Syngenta", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  {loc:3, name:"Dahlia Karma Moon Lady", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"Syngenta", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  {loc:4, name:"Dahlia Red 23 022", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"InFlora", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  {loc:5, name:"Dahlia White 23 023", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"InFlora", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  {loc:6, name:"Dahlia Purple 23 025", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"InFlora", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  {loc:7, name:"Dahlia White 23 024", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"InFlora", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  {loc:8, name:"Dahlia Dezign Deco Hot Pink (21 015)", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"InFlora", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  {loc:9, name:"Dahlia Dezign Deco Wedding Pink (22 018)", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"InFlora", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  {loc:10, name:"Dahlia Dezign Deco Lavender Purple (21 009)", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"InFlora", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  {loc:11, name:"Dahlia Dezign Deco Orange Swirl (21 006)", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"InFlora", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  {loc:12, name:"Dahlia Dezign Deco Pink Swirl (21 005)", crop:"dahlia", spacing:1, sqft:24, qty:24, breeder:"InFlora", netting:"Y", notes:"Pinch half to 3 leaf sets"},
+  // ROW 1 SOUTH (Beds 13-24)
+  {loc:13, name:"Scabiosa Focal Scoop Popsicle", crop:"scabiosa", spacing:1, sqft:24, qty:24, breeder:"Danziger", netting:"Y", notes:"Pinch above 4th node ~4\" above ground"},
+  {loc:14, name:"Scabiosa Focal Scoop White Imp", crop:"scabiosa", spacing:1, sqft:24, qty:24, breeder:"Danziger", netting:"Y", notes:"Pinch above 4th node ~4\" above ground"},
+  {loc:15, name:"Scabiosa Bon Bon Scoop Merlot", crop:"scabiosa", spacing:1, sqft:24, qty:24, breeder:"Danziger", netting:"Y", notes:"Pinch above 4th node ~4\" above ground"},
+  {loc:16, name:"Scabiosa Bon Bon Scoop Ube", crop:"scabiosa", spacing:1, sqft:24, qty:24, breeder:"Danziger", netting:"Y", notes:"Pinch above 4th node ~4\" above ground"},
+  {loc:17, name:"Scabiosa Bon Bon Scoop French Vanilla", crop:"scabiosa", spacing:1, sqft:24, qty:24, breeder:"Danziger", netting:"Y", notes:"Pinch above 4th node ~4\" above ground"},
+  {loc:18, name:"Matricaria Amazone", crop:"matricaria", spacing:8, sqft:24, qty:192, breeder:"Evanthia", netting:"Y", notes:"1 flush"},
+  {loc:19, name:"Matricaria Baya", crop:"matricaria", spacing:8, sqft:24, qty:192, breeder:"Evanthia", netting:"Y", notes:"1 flush"},
+  {loc:20, name:"Matricaria Campagne Imp", crop:"matricaria", spacing:8, sqft:24, qty:192, breeder:"Evanthia", netting:"Y", notes:"1 flush"},
+  {loc:21, name:"Dianthus Amazon Neon Purple", crop:"dianthus", spacing:4, sqft:24, qty:96, breeder:"PanAmerican Seed", netting:"Y", notes:"Harvest main stem to promote side stems"},
+  {loc:22, name:"Dianthus Amazon Lavender Magic", crop:"dianthus", spacing:4, sqft:24, qty:96, breeder:"PanAmerican Seed", netting:"Y", notes:"Harvest main stem to promote side stems"},
+  {loc:23, name:"Dianthus Amazon Neon Cherry", crop:"dianthus", spacing:4, sqft:24, qty:96, breeder:"PanAmerican Seed", netting:"Y", notes:"Harvest main stem to promote side stems"},
+  {loc:24, name:"Dianthus Amazon Rose Magic", crop:"dianthus", spacing:4, sqft:24, qty:96, breeder:"PanAmerican Seed", netting:"Y", notes:"Harvest main stem to promote side stems"},
+  // ROW 2 NORTH (Beds 25-36)
+  {loc:25, name:"Snapdragon Potomac Red", crop:"snapdragon", spacing:10, sqft:24, qty:240, breeder:"PanAmerican Seed", netting:"Y", notes:"1 flush"},
+  {loc:26, name:"Snapdragon Potomac Dark Pink", crop:"snapdragon", spacing:10, sqft:24, qty:240, breeder:"PanAmerican Seed", netting:"Y", notes:"1 flush"},
+  {loc:27, name:"Snapdragon Potomac Orange", crop:"snapdragon", spacing:10, sqft:24, qty:240, breeder:"PanAmerican Seed", netting:"Y", notes:"1 flush"},
+  {loc:28, name:"Snapdragon Potomac Yellow", crop:"snapdragon", spacing:10, sqft:24, qty:240, breeder:"PanAmerican Seed", netting:"Y", notes:"1 flush"},
+  {loc:29, name:"Snapdragon Potomac White", crop:"snapdragon", spacing:10, sqft:24, qty:240, breeder:"PanAmerican Seed", netting:"Y", notes:"1 flush"},
+  {loc:30, name:"Zinnia Benary's Giant Salmon Rose", crop:"zinnia", spacing:1, sqft:24, qty:24, breeder:"Benary", netting:"Y", notes:""},
+  {loc:31, name:"Zinnia Benary's Giant Purple", crop:"zinnia", spacing:1, sqft:24, qty:24, breeder:"Benary", netting:"Y", notes:""},
+  {loc:32, name:"Zinnia Queeny Lime", crop:"zinnia", spacing:1, sqft:24, qty:24, breeder:"Floragran", netting:"Y", notes:""},
+  {loc:33, name:"Zinnia Queeny Lime Orange", crop:"zinnia", spacing:1, sqft:24, qty:24, breeder:"Floragran", netting:"Y", notes:""},
+  {loc:34, name:"Zinnia Queeny Pure Orange", crop:"zinnia", spacing:1, sqft:24, qty:24, breeder:"Syngenta", netting:"Y", notes:""},
+  {loc:35, name:"Zinnia Uproar Scarlet", crop:"zinnia", spacing:1, sqft:24, qty:24, breeder:"Syngenta", netting:"Y", notes:""},
+  {loc:36, name:"Zinnia Uproar Deep Yellow", crop:"zinnia", spacing:1, sqft:24, qty:24, breeder:"Syngenta", netting:"Y", notes:""},
+  // ROW 2 SOUTH (Beds 37-48)
+  {loc:37, name:"Limonium Hipster Blue", crop:"limonium", spacing:1, sqft:24, qty:24, breeder:"Benary", netting:"N", notes:"Pinch out first stem"},
+  {loc:38, name:"Limonium Hipster White", crop:"limonium", spacing:1, sqft:24, qty:24, breeder:"Benary", netting:"N", notes:"Pinch out first stem"},
+  {loc:39, name:"Limonium Hipster Rose", crop:"limonium", spacing:1, sqft:24, qty:24, breeder:"Benary", netting:"N", notes:"Pinch out first stem"},
+  {loc:40, name:"Gomphrena Audray White", crop:"gomphrena", spacing:6, sqft:24, qty:144, breeder:"Takii", netting:"N", notes:"Flowers through summer"},
+  {loc:41, name:"Gomphrena Audray Pink", crop:"gomphrena", spacing:6, sqft:24, qty:144, breeder:"Takii", netting:"N", notes:"Flowers through summer"},
+  {loc:42, name:"Ageratum Blue Horizon", crop:"ageratum", spacing:6, sqft:24, qty:144, breeder:"Sakata", netting:"Y", notes:"Pinch out first stem"},
+  {loc:43, name:"Celosia Sunday Dark Pink", crop:"celosia", spacing:6, sqft:24, qty:144, breeder:"PanAmerican Seed", netting:"Y", notes:"2-3 flushes"},
+  {loc:44, name:"Celosia Sunday Red", crop:"celosia", spacing:6, sqft:24, qty:144, breeder:"PanAmerican Seed", netting:"Y", notes:"2-3 flushes"},
+  {loc:45, name:"Celosia Sunday Purple", crop:"celosia", spacing:6, sqft:24, qty:144, breeder:"PanAmerican Seed", netting:"Y", notes:"2-3 flushes"},
+  {loc:46, name:"Celosia Sunday Orange", crop:"celosia", spacing:6, sqft:24, qty:144, breeder:"PanAmerican Seed", netting:"Y", notes:"2-3 flushes"},
+  {loc:47, name:"Celosia Sunday Gold", crop:"celosia", spacing:6, sqft:24, qty:144, breeder:"PanAmerican Seed", netting:"Y", notes:"2-3 flushes"},
+  {loc:48, name:"Celosia Sunday Yellow", crop:"celosia", spacing:6, sqft:24, qty:144, breeder:"PanAmerican Seed", netting:"Y", notes:"2-3 flushes"},
+  // ROW 3 NORTH (Beds 49-60)
+  {loc:49, name:"Sorghum Orn. Prairie Pearls Burgundy", crop:"sorghum", spacing:2, sqft:24, qty:48, breeder:"InFlora", netting:"N", notes:"1 flush, direct sow"},
+  {loc:50, name:"Sorghum Orn. Prairie Pearls Cream Imp", crop:"sorghum", spacing:2, sqft:24, qty:48, breeder:"InFlora", netting:"N", notes:"1 flush, direct sow"},
+  {loc:51, name:"Sorghum Orn. Prairie Pearls Exp Caramel", crop:"sorghum", spacing:2, sqft:24, qty:48, breeder:"InFlora", netting:"N", notes:"1 flush, direct sow"},
+  {loc:52, name:"Sorghum Orn. Prairie Pearls White", crop:"sorghum", spacing:2, sqft:24, qty:48, breeder:"InFlora", netting:"N", notes:"1 flush, direct sow"},
+  {loc:53, name:"Sorghum Orn. Prairie Pearls Orange Imp", crop:"sorghum", spacing:2, sqft:24, qty:48, breeder:"InFlora", netting:"N", notes:"1 flush, direct sow"},
+  {loc:54, name:"Sorghum Orn. Prairie Pearls Pink", crop:"sorghum", spacing:2, sqft:24, qty:48, breeder:"InFlora", netting:"N", notes:"1 flush, direct sow"},
+  {loc:55, name:"Marigold COCO Gold", crop:"marigold", spacing:2, sqft:24, qty:48, breeder:"Sakata", netting:"Y", notes:"Pinch 2-3 wks after transplant, 1 flush"},
+  {loc:56, name:"Marigold COCO Yellow", crop:"marigold", spacing:2, sqft:24, qty:48, breeder:"Sakata", netting:"Y", notes:"Pinch 2-3 wks after transplant, 1 flush"},
+  {loc:57, name:"Marigold COCO Deep Orange", crop:"marigold", spacing:2, sqft:24, qty:48, breeder:"Sakata", netting:"Y", notes:"Pinch 2-3 wks after transplant, 1 flush"},
+  {loc:58, name:"Rudbeckia Maya", crop:"rudbeckia", spacing:4, sqft:24, qty:96, breeder:"Benary", netting:"Y", notes:"Flowers late summer thru fall"},
+  {loc:59, name:"Craspedia Solar Pop", crop:"craspedia", spacing:1, sqft:24, qty:24, breeder:"Benary", netting:"Y", notes:"Flowers late summer thru fall"},
+  {loc:60, name:"Verbena bonariensis Flair", crop:"verbena", spacing:1, sqft:24, qty:24, breeder:"Benary", netting:"Y", notes:"Flowers late summer thru fall"},
+  // ROW 3 SOUTH (Beds 61-72)
+  {loc:61, name:"Dianthus Amazon Neon Purple", crop:"dianthus", spacing:4, sqft:24, qty:96, breeder:"PanAmerican Seed", netting:"Y", notes:"2nd planting, harvest main stem"},
+  {loc:62, name:"Dianthus Amazon Rose Magic", crop:"dianthus", spacing:4, sqft:24, qty:96, breeder:"PanAmerican Seed", netting:"Y", notes:"2nd planting, harvest main stem"},
+  {loc:63, name:"Dianthus Amazon Neon Cherry", crop:"dianthus", spacing:4, sqft:24, qty:96, breeder:"PanAmerican Seed", netting:"Y", notes:"2nd planting, harvest main stem"},
+  {loc:64, name:"Snapdragon Potomac Red", crop:"snapdragon", spacing:10, sqft:24, qty:240, breeder:"PanAmerican Seed", netting:"Y", notes:"2nd planting, 1 flush"},
+  {loc:65, name:"Snapdragon Potomac Orange", crop:"snapdragon", spacing:10, sqft:24, qty:240, breeder:"PanAmerican Seed", netting:"Y", notes:"2nd planting, 1 flush"},
+  {loc:66, name:"Snapdragon Potomac Yellow", crop:"snapdragon", spacing:10, sqft:24, qty:240, breeder:"PanAmerican Seed", netting:"Y", notes:"2nd planting, 1 flush"},
+  {loc:67, name:"Snapdragon Toulon Velvet 4", crop:"snapdragon", spacing:10, sqft:24, qty:240, breeder:"Evanthia", netting:"Y", notes:"1 flush"},
+  {loc:68, name:"Snapdragon Toulon Rose 5", crop:"snapdragon", spacing:10, sqft:24, qty:240, breeder:"Evanthia", netting:"Y", notes:"1 flush"},
+  {loc:69, name:"Snapdragon Toulon White 4", crop:"snapdragon", spacing:10, sqft:24, qty:240, breeder:"Evanthia", netting:"Y", notes:"1 flush"},
+  {loc:70, name:"Flowering Kale Empire Olga", crop:"kale", spacing:6, sqft:24, qty:144, breeder:"Evanthia", netting:"Y", notes:"1 flush"},
+  {loc:71, name:"Flowering Kale Empire Anna", crop:"kale", spacing:6, sqft:24, qty:144, breeder:"Evanthia", netting:"Y", notes:"1 flush"},
+  {loc:72, name:"Flowering Kale Empire Bogdana", crop:"kale", spacing:6, sqft:24, qty:144, breeder:"Evanthia", netting:"Y", notes:"1 flush"},
+  // ROW 4 NORTH — Sunflowers Planting 1 (Beds 73-78)
+  {loc:73, name:"Sunflower Sunova", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Danziger", netting:"N", notes:"Branching type"},
+  {loc:74, name:"Sunflower Sunfill Purple", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"NuFlowers", netting:"N", notes:"1 cut per plant"},
+  {loc:75, name:"Sunflower Sunfill Green", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"NuFlowers", netting:"N", notes:"1 cut per plant"},
+  {loc:76, name:"Sunflower Vincent's Tangy", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Sakata", netting:"N", notes:"1 cut per plant"},
+  {loc:77, name:"Sunflower Vincent's Fresh DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Sakata", netting:"N", notes:"1 cut per plant"},
+  {loc:78, name:"Sunflower Vincent's Choice DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Sakata", netting:"N", notes:"1 cut per plant"},
+  // ROW 4 SOUTH (Beds 79-84)
+  {loc:79, name:"Sunflower Solano Deep Orange", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Evanthia", netting:"N", notes:"1 cut per plant"},
+  {loc:80, name:"Sunflower Solano Gold", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Evanthia", netting:"N", notes:"1 cut per plant"},
+  {loc:81, name:"Sunflower Solano Flame", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Evanthia", netting:"N", notes:"1 cut per plant"},
+  {loc:82, name:"Sunflower Sunrich Orange DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Takii", netting:"N", notes:"1 cut per plant"},
+  {loc:83, name:"Sunflower Sunrich Orange Summer DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Takii", netting:"N", notes:"1 cut per plant"},
+  {loc:84, name:"Sunflower Sunrich Gold", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Takii", netting:"N", notes:"1 cut per plant"},
+  // ROW 5 NORTH — Sunflowers Planting 2 (Beds 85-90)
+  {loc:85, name:"Sunflower Sunova", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Danziger", netting:"N", notes:"Planting 2, branching"},
+  {loc:86, name:"Sunflower Sunfill Purple", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"NuFlowers", netting:"N", notes:"Planting 2"},
+  {loc:87, name:"Sunflower Sunfill Green", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"NuFlowers", netting:"N", notes:"Planting 2"},
+  {loc:88, name:"Sunflower Vincent's Tangy", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Sakata", netting:"N", notes:"Planting 2"},
+  {loc:89, name:"Sunflower Vincent's Fresh DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Sakata", netting:"N", notes:"Planting 2"},
+  {loc:90, name:"Sunflower Vincent's Choice DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Sakata", netting:"N", notes:"Planting 2"},
+  // ROW 5 SOUTH (Beds 91-96)
+  {loc:91, name:"Sunflower Solano Deep Orange", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Evanthia", netting:"N", notes:"Planting 2"},
+  {loc:92, name:"Sunflower Solano Gold", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Evanthia", netting:"N", notes:"Planting 2"},
+  {loc:93, name:"Sunflower Solano Flame", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Evanthia", netting:"N", notes:"Planting 2"},
+  {loc:94, name:"Sunflower Sunrich Orange DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Takii", netting:"N", notes:"Planting 2"},
+  {loc:95, name:"Sunflower Sunrich Orange Summer DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Takii", netting:"N", notes:"Planting 2"},
+  {loc:96, name:"Sunflower Sunrich Gold", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Takii", netting:"N", notes:"Planting 2"},
+  // ROW 6 NORTH — Sunflowers Planting 3 (Beds 97-102)
+  {loc:97, name:"Sunflower Sunova", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Danziger", netting:"N", notes:"Planting 3, branching"},
+  {loc:98, name:"Sunflower Sunfill Purple", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"NuFlowers", netting:"N", notes:"Planting 3"},
+  {loc:99, name:"Sunflower Sunfill Green", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"NuFlowers", netting:"N", notes:"Planting 3"},
+  {loc:100, name:"Sunflower Vincent's Tangy", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Sakata", netting:"N", notes:"Planting 3"},
+  {loc:101, name:"Sunflower Vincent's Fresh DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Sakata", netting:"N", notes:"Planting 3"},
+  {loc:102, name:"Sunflower Vincent's Choice DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Sakata", netting:"N", notes:"Planting 3"},
+  // ROW 6 SOUTH (Beds 103-108)
+  {loc:103, name:"Sunflower Solano Deep Orange", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Evanthia", netting:"N", notes:"Planting 3"},
+  {loc:104, name:"Sunflower Solano Gold", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Evanthia", netting:"N", notes:"Planting 3"},
+  {loc:105, name:"Sunflower Solano Flame", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Evanthia", netting:"N", notes:"Planting 3"},
+  {loc:106, name:"Sunflower Sunrich Orange DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Takii", netting:"N", notes:"Planting 3"},
+  {loc:107, name:"Sunflower Sunrich Orange Summer DMR", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Takii", netting:"N", notes:"Planting 3"},
+  {loc:108, name:"Sunflower Sunrich Gold", crop:"sunflower", spacing:6, sqft:48, qty:288, breeder:"Takii", netting:"N", notes:"Planting 3"},
+];
+
+const vMap = {};
+varieties.forEach(v => vMap[v.loc] = v);
+
+// Row definitions
+const rows = [
+  {num:1, label:"Bed 1", season:"Cultivate & Summer wk 28+", north:[1,2,3,4,5,6,7,8,9,10,11,12], south:[13,14,15,16,17,18,19,20,21,22,23,24]},
+  {num:2, label:"Bed 2", season:"Mid-season wk 28-34", north:[25,26,27,28,29,30,31,32,33,34,35,36], south:[37,38,39,40,41,42,43,44,45,46,47,48]},
+  {num:3, label:"Bed 3", season:"October flower wk 40", north:[49,50,51,52,53,54,55,56,57,58,59,60], south:[61,62,63,64,65,66,67,68,69,70,71,72]},
+  {num:4, label:"Bed 4", season:"Sunflower Planting 1 wk 20", north:[73,74,75,76,77,78], south:[79,80,81,82,83,84]},
+  {num:5, label:"Bed 5", season:"Sunflower Planting 2 wk 26", north:[85,86,87,88,89,90], south:[91,92,93,94,95,96]},
+  {num:6, label:"Bed 6", season:"Sunflower Planting 3 wk 32", north:[97,98,99,100,101,102], south:[103,104,105,106,107,108]},
+];
+
+const cropColors = {
+  dahlia:"#e8a0b0", scabiosa:"#c8a0d8", matricaria:"#f0e8a0", dianthus:"#f0b0c0",
+  snapdragon:"#a0c8e8", zinnia:"#e8c080", limonium:"#b0d8c0", gomphrena:"#d8b0d0",
+  ageratum:"#90b8e0", celosia:"#e8b898", sorghum:"#c8c0a0", marigold:"#f0c840",
+  rudbeckia:"#e0d060", craspedia:"#f0e070", verbena:"#c090d0", sunflower:"#f0d850", kale:"#88c8a0"
+};
+
+// ============================================================
+// VIEW SWITCHING
+// ============================================================
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ============================================================
+// OVERVIEW BUILDER
+// ============================================================
+function buildOverview() {
+  const g = document.getElementById('gardenOverview');
+  let html = '<div style="text-align:center;font-size:10px;color:#888;margin-bottom:4px;">NORTH &larr; &nbsp; Entrance at center &nbsp; &rarr; SOUTH</div>';
+
+  // Physical bed order: Bed 6 closest to entrance, then 1,2,3,4,5 (farthest)
+  // Display top=farthest, bottom=entrance, so render: 5,4,3,2,1,6
+  const physicalOrder = [5,4,3,2,1,6].map(n => rows.find(r => r.num === n));
+  for (let i = 0; i < physicalOrder.length; i++) {
+    const r = physicalOrder[i];
+    if (i > 0) {
+      html += '<div class="walkway"><span>— 5 ft walkway —</span></div>';
+    }
+    html += '<div class="row-group">';
+    html += `<div class="row-label">${r.label} N<div class="season">${r.season}</div></div>`;
+    html += '<div class="bed-half">';
+    r.north.forEach(loc => {
+      const v = vMap[loc];
+      if (v) {
+        const shortName = v.name.replace(/^(Dahlia|Scabiosa|Matricaria|Dianthus|Snapdragon|Zinnia|Limonium|Gomphrena|Ageratum|Celosia|Sorghum Orn\.|Marigold|Rudbeckia|Craspedia|Verbena bonariensis|Sunflower|Flowering Kale)\s*/, '');
+        html += `<div class="plot c-${v.crop}" onclick="goToDetail(${v.loc})" title="#${v.loc} ${v.name}\n${v.spacing}/sqft · ${v.qty} plants">
+          <div class="pname">${shortName}</div>
+          <div class="pinfo">#${v.loc} · ${v.spacing}/ft²</div>
+        </div>`;
+      }
+    });
+    html += '</div>';
+    html += '<div class="center-aisle">CENTER AISLE</div>';
+    html += '<div class="bed-half">';
+    r.south.forEach(loc => {
+      const v = vMap[loc];
+      if (v) {
+        const shortName = v.name.replace(/^(Dahlia|Scabiosa|Matricaria|Dianthus|Snapdragon|Zinnia|Limonium|Gomphrena|Ageratum|Celosia|Sorghum Orn\.|Marigold|Rudbeckia|Craspedia|Verbena bonariensis|Sunflower|Flowering Kale)\s*/, '');
+        html += `<div class="plot c-${v.crop}" onclick="goToDetail(${v.loc})" title="#${v.loc} ${v.name}\n${v.spacing}/sqft · ${v.qty} plants">
+          <div class="pname">${shortName}</div>
+          <div class="pinfo">#${v.loc} · ${v.spacing}/ft²</div>
+        </div>`;
+      }
+    });
+    html += '</div>';
+    html += `<div class="row-label">${r.label} S<div class="season">${r.season}</div></div>`;
+    html += '</div>';
+  }
+
+  html += '<div style="text-align:center;font-size:10px;color:#888;margin-top:8px;">&#9660; ENTRANCE / FENCE GATE &#9660;</div>';
+  g.innerHTML = html;
+
+  // Legend
+  const leg = document.getElementById('legend');
+  const seen = new Set();
+  let lhtml = '';
+  varieties.forEach(v => {
+    if (!seen.has(v.crop)) {
+      seen.add(v.crop);
+      lhtml += `<div class="legend-item"><div class="legend-swatch" style="background:${cropColors[v.crop]}"></div>${v.crop.charAt(0).toUpperCase()+v.crop.slice(1)}</div>`;
+    }
+  });
+  leg.innerHTML = lhtml;
+}
+
+// ============================================================
+// BED DETAIL BUILDER
+// ============================================================
+function buildBedSelector() {
+  const sel = document.getElementById('bedSelector');
+  let html = '';
+  rows.forEach(r => {
+    html += `<div class="bed-btn" data-bed="${r.num}N" onclick="showBed(${r.num},'N')">${r.label} North</div>`;
+    html += `<div class="bed-btn" data-bed="${r.num}S" onclick="showBed(${r.num},'S')">${r.label} South</div>`;
+  });
+  sel.innerHTML = html;
+}
+
+function showBed(num, side) {
+  // Highlight button
+  document.querySelectorAll('.bed-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.bed-btn[data-bed="${num}${side}"]`).classList.add('active');
+
+  const r = rows.find(r => r.num === num);
+  const locs = side === 'N' ? r.north : r.south;
+  const bedName = `${r.label} ${side === 'N' ? 'North' : 'South'}`;
+  const isSunflower = num >= 4;
+  const sectionLen = isSunflower ? 16 : 8;
+
+  let html = `<div class="bed-title">${bedName}</div>`;
+  html += `<div class="bed-subtitle">3 ft wide × ~${locs.length * sectionLen} ft long · ${locs.length} varieties · ${sectionLen} ft per variety section</div>`;
+
+  locs.forEach(loc => {
+    const v = vMap[loc];
+    if (!v) return;
+    const totalPlants = v.spacing * v.sqft;
+    const bedWidth = 3; // feet
+    const bedLen = v.sqft / bedWidth;
+
+    // Calculate grid dimensions
+    let colsPerFt, rowsPerFt;
+    if (v.spacing === 1) { colsPerFt = 1; rowsPerFt = 1; }
+    else if (v.spacing === 2) { colsPerFt = 1; rowsPerFt = 2; }
+    else if (v.spacing === 4) { colsPerFt = 2; rowsPerFt = 2; }
+    else if (v.spacing === 6) { colsPerFt = 2; rowsPerFt = 3; }
+    else if (v.spacing === 8) { colsPerFt = 2; rowsPerFt = 4; }
+    else if (v.spacing === 10) { colsPerFt = 2; rowsPerFt = 5; }
+    else { colsPerFt = Math.round(Math.sqrt(v.spacing)); rowsPerFt = Math.ceil(v.spacing / colsPerFt); }
+
+    const totalCols = colsPerFt * bedWidth;
+    const totalRows = rowsPerFt * bedLen;
+    const inchSpacingX = Math.round(36 / totalCols * 10) / 10;
+    const inchSpacingY = Math.round((bedLen * 12) / totalRows * 10) / 10;
+
+    html += `<div class="variety-section">`;
+    html += `<div class="variety-header c-${v.crop}" onclick="toggleGrid(this)">
+      <div>
+        <span class="arrow">&#9654;</span> #${v.loc} — ${v.name}
+        <span class="variety-meta">&nbsp;|&nbsp;${v.breeder}</span>
+      </div>
+      <div class="variety-meta">${v.spacing}/ft² · ${totalPlants} plants · ${v.netting === 'Y' ? 'Netting' : 'No net'}</div>
+    </div>`;
+    html += `<div class="variety-grid-container">`;
+    html += `<div class="grid-info">
+      <span>Bed section: ${bedWidth} ft × ${bedLen} ft = ${v.sqft} ft²</span>
+      <span>Spacing: ~${inchSpacingX}" × ${inchSpacingY}"</span>
+      <span>Grid: ${totalCols} across × ${totalRows} long</span>
+      <span>Total plants: ${totalPlants}</span>
+      ${v.notes ? `<span>${v.notes}</span>` : ''}
+    </div>`;
+
+    // Build the visual grid (show up to 8ft of length, note if truncated)
+    const showRows = Math.min(totalRows, rowsPerFt * 4); // show 4ft worth
+    const truncated = totalRows > showRows;
+
+    html += `<div style="overflow:auto; max-width:100%;">`;
+    html += `<div style="display:inline-block;">`;
+    // Column ruler
+    html += `<div style="display:flex; gap:1px; margin-bottom:2px; margin-left:28px;">`;
+    for (let c = 0; c < totalCols; c++) {
+      const ftMark = Math.floor(c / colsPerFt);
+      if (c % colsPerFt === 0) {
+        html += `<div style="width:18px; text-align:center; font-size:7px; color:#999;">${ftMark}'</div>`;
+      } else {
+        html += `<div style="width:19px;"></div>`;
+      }
+    }
+    html += `</div>`;
+
+    for (let r = 0; r < showRows; r++) {
+      const ftMarkY = (r / rowsPerFt).toFixed(1);
+      html += `<div style="display:flex; align-items:center; gap:1px;">`;
+      // Row label
+      if (r % rowsPerFt === 0) {
+        html += `<div style="width:26px; text-align:right; font-size:7px; color:#999; padding-right:2px;">${Math.floor(r/rowsPerFt)}'</div>`;
+      } else {
+        html += `<div style="width:26px;"></div>`;
+      }
+      for (let c = 0; c < totalCols; c++) {
+        html += `<div style="width:18px;height:18px;border-radius:50%;background:${cropColors[v.crop]};border:1px solid rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;font-size:6px;color:rgba(0,0,0,0.4);">&#9679;</div>`;
+      }
+      html += `</div>`;
+    }
+    if (truncated) {
+      html += `<div style="text-align:center;font-size:10px;color:#999;padding:4px;">⋮ continues for ${bedLen} ft total (${totalRows} rows) ⋮</div>`;
+    }
+    html += `</div></div>`;
+
+    html += `<div class="grid-scale">Each dot = 1 plant position. Showing ${Math.min(4, bedLen)} ft of ${bedLen} ft bed section. Row ruler on left, column ruler on top (in feet).</div>`;
+    html += `</div></div>`;
+  });
+
+  document.getElementById('bedView').innerHTML = html;
+}
+
+function toggleGrid(header) {
+  const arrow = header.querySelector('.arrow');
+  const container = header.nextElementSibling;
+  arrow.classList.toggle('open');
+  container.classList.toggle('open');
+}
+
+function goToDetail(loc) {
+  // Figure out which bed this loc belongs to
+  for (const r of rows) {
+    if (r.north.includes(loc)) {
+      showView2('detail');
+      showBed(r.num, 'N');
+      // Open that specific variety
+      setTimeout(() => {
+        const sections = document.querySelectorAll('.variety-section');
+        sections.forEach(s => {
+          if (s.querySelector('.variety-header').textContent.includes('#'+loc)) {
+            s.querySelector('.variety-header').click();
+            s.scrollIntoView({behavior:'smooth', block:'center'});
+          }
+        });
+      }, 100);
+      return;
+    }
+    if (r.south.includes(loc)) {
+      showView2('detail');
+      showBed(r.num, 'S');
+      setTimeout(() => {
+        const sections = document.querySelectorAll('.variety-section');
+        sections.forEach(s => {
+          if (s.querySelector('.variety-header').textContent.includes('#'+loc)) {
+            s.querySelector('.variety-header').click();
+            s.scrollIntoView({behavior:'smooth', block:'center'});
+          }
+        });
+      }, 100);
+      return;
+    }
+  }
+}
+
+function showView2(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.querySelectorAll('.tab')[id==='overview'?0:id==='detail'?1:2].classList.add('active');
+}
+
+// ============================================================
+// PLANTING GUIDE TABLE
+// ============================================================
+function buildGuide() {
+  const t = document.getElementById('guideTable');
+  let html = `<thead><tr>
+    <th>Loc#</th><th>Bed</th><th>Side</th><th>Variety Name</th><th>Crop</th><th>Breeder</th>
+    <th>Spacing</th><th>Qty</th><th>Bed ft²</th><th>Netting</th><th>Notes</th>
+  </tr></thead><tbody>`;
+
+  varieties.forEach(v => {
+    let bedNum, side;
+    for (const r of rows) {
+      if (r.north.includes(v.loc)) { bedNum = r.num; side = 'North'; break; }
+      if (r.south.includes(v.loc)) { bedNum = r.num; side = 'South'; break; }
+    }
+    html += `<tr>
+      <td class="loc">${v.loc}</td>
+      <td>${bedNum}</td>
+      <td>${side}</td>
+      <td><strong>${v.name}</strong></td>
+      <td>${v.crop}</td>
+      <td>${v.breeder}</td>
+      <td>${v.spacing}/ft²</td>
+      <td>${v.qty}</td>
+      <td>${v.sqft}</td>
+      <td>${v.netting}</td>
+      <td>${v.notes}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  t.innerHTML = html;
+}
+
+function filterGuide() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const rows = document.querySelectorAll('#guideTable tbody tr');
+  rows.forEach(r => {
+    r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+buildOverview();
+buildBedSelector();
+buildGuide();
+</script>
+
+</body>
+</html>
