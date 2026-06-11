@@ -112,6 +112,12 @@
   .status-msg.ok { display: block; background: #e6f4e0; color: #2d5016; border: 1px solid #b8d8a8; }
   .status-msg.err { display: block; background: #fde8e8; color: #a02020; border: 1px solid #e8b8b8; }
   .plot-context { font-size: 12px; color: #666; background: #f0f7e6; padding: 8px 12px; border-radius: 6px; margin-top: 6px; display: none; }
+  .photo-btn { display: inline-block; padding: 10px 16px; background: white; border: 2px dashed #2d5016; color: #2d5016; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .photo-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .photo-thumb { position: relative; width: 72px; height: 72px; border-radius: 6px; overflow: hidden; border: 1px solid #ccc; }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-thumb button { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border: none; border-radius: 50%; background: rgba(0,0,0,0.65); color: white; font-size: 12px; line-height: 1; cursor: pointer; }
+  .photo-links a { text-decoration: none; }
 
   /* ===== RESULTS ===== */
   .results-wrap { max-width: 1200px; margin: 0 auto; }
@@ -249,6 +255,14 @@
     </div>
 
     <div class="fld">
+      <label>Photos (optional, up to 4 — saved to Drive, linked to this submission)</label>
+      <label class="photo-btn" for="photoInput">📷 Add photos</label>
+      <input type="file" id="photoInput" accept="image/*" multiple style="display:none;" onchange="handlePhotos(this.files)">
+      <div class="photo-preview" id="photoPreview"></div>
+      <div class="hint" id="photoHint"></div>
+    </div>
+
+    <div class="fld">
       <label>Notes (optional)</label>
       <textarea id="subNotes" rows="2" placeholder="Bloom quality, pest pressure, weather..."></textarea>
     </div>
@@ -278,13 +292,14 @@
       Avg stem length pools all individual measurements across harvests. TTH = days from planting to first harvest.
       Harvest window = days between first and last harvest. Losses % = (short + damaged) ÷ total stems.
       Plant dates: pre-loaded from planting records (Wk 20 → May 21, Wk 22 → June 3) and updated by Planting Record submissions.
+      📷 opens the photo in Google Drive.
     </div>
   </div>
 </div>
 
 <script>
 // ============================================================
-// CONFIG — paste your Google Apps Script Web App URL here
+// CONFIG
 // ============================================================
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykWfOcdZX95H9c0e1xLeFts-TKogVxohPkWgNCrfDeOhiX_vTjbbv8E9W_GeeEjWxqQQ/exec";
 
@@ -797,6 +812,52 @@ function parseMultiLocs(str) {
   return [...out].sort((a, b) => a - b);
 }
 
+// ---- Photos ----
+let pendingPhotos = [];
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 1600;
+      let w = img.width, h = img.height;
+      if (Math.max(w, h) > max) { const s = max / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      const dataUrl = c.toDataURL('image/jpeg', 0.75);
+      resolve({name: (file.name || 'photo.jpg').replace(/[^\w.\-]/g, '_'), data: dataUrl.split(',')[1], thumb: dataUrl});
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
+    img.src = url;
+  });
+}
+
+async function handlePhotos(files) {
+  const room = 4 - pendingPhotos.length;
+  const toAdd = [...files].slice(0, room);
+  if (files.length > room) showStatus('Max 4 photos per submission — extras skipped.', false);
+  for (const f of toAdd) {
+    try { pendingPhotos.push(await compressImage(f)); }
+    catch (e) { showStatus('Could not process ' + f.name, false); }
+  }
+  document.getElementById('photoInput').value = '';
+  renderPhotoPreview();
+}
+
+function removePhoto(i) {
+  pendingPhotos.splice(i, 1);
+  renderPhotoPreview();
+}
+
+function renderPhotoPreview() {
+  document.getElementById('photoPreview').innerHTML = pendingPhotos.map((p, i) =>
+    `<div class="photo-thumb"><img src="${p.thumb}" alt=""><button type="button" onclick="removePhoto(${i})">×</button></div>`).join('');
+  document.getElementById('photoHint').textContent = pendingPhotos.length ? pendingPhotos.length + ' photo(s) attached — uploaded on Submit' : '';
+}
+
 function showStatus(msg, ok) {
   const el = document.getElementById('statusMsg');
   el.className = 'status-msg ' + (ok ? 'ok' : 'err');
@@ -832,7 +893,8 @@ async function submitData() {
       damaged: parseInt(document.getElementById('damagedStems').value, 10) || 0,
       total: total,
       notes: document.getElementById('subNotes').value.trim(),
-      submitter: document.getElementById('subName').value.trim()
+      submitter: document.getElementById('subName').value.trim(),
+      photos: pendingPhotos.map(p => ({name: p.name, data: p.data}))
     };
   } else {
     const locs = parseMultiLocs(document.getElementById('plotMultiInput').value);
@@ -842,29 +904,33 @@ async function submitData() {
       entries: locs.map(l => ({loc: l, variety: vMap[l].name})),
       date: date,
       notes: document.getElementById('subNotes').value.trim(),
-      submitter: document.getElementById('subName').value.trim()
+      submitter: document.getElementById('subName').value.trim(),
+      photos: pendingPhotos.map(p => ({name: p.name, data: p.data}))
     };
   }
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
-  btn.textContent = 'Submitting…';
+  btn.textContent = payload.photos.length ? 'Uploading data + photos…' : 'Submitting…';
   try {
     const res = await fetch(SCRIPT_URL, {method: 'POST', body: JSON.stringify(payload)});
     const out = await res.json();
     if (!out.ok) throw new Error(out.error || 'Server error');
     cachedResults = null; // force refresh next time
+    const photoNote = payload.photos.length ? `, ${payload.photos.length} photo(s) uploaded` : '';
     if (formType === 'harvest') {
-      showStatus(`✓ Harvest saved for #${payload.entries[0].loc} ${payload.entries[0].variety} (${payload.total} stems${payload.avgStem !== '' ? ', avg ' + payload.avgStem + '"' : ''}).`, true);
+      showStatus(`✓ Harvest saved for #${payload.entries[0].loc} ${payload.entries[0].variety} (${payload.total} stems${payload.avgStem !== '' ? ', avg ' + payload.avgStem + '"' : ''}${photoNote}).`, true);
       // Clear measurement fields, keep plot + date for possible same-day entries
       for (let i = 1; i <= 10; i++) document.getElementById('stem' + i).value = '';
       ['shortStems', 'damagedStems', 'totalStems', 'subNotes'].forEach(id => document.getElementById(id).value = '');
       updateStemAvg();
     } else {
-      showStatus(`✓ Planting date ${payload.date} saved for ${payload.entries.length} plot(s): ${payload.entries.map(e => '#' + e.loc).join(', ')}.`, true);
+      showStatus(`✓ Planting date ${payload.date} saved for ${payload.entries.length} plot(s): ${payload.entries.map(e => '#' + e.loc).join(', ')}${photoNote}.`, true);
       document.getElementById('plotMultiInput').value = '';
       document.getElementById('subNotes').value = '';
     }
+    pendingPhotos = [];
+    renderPhotoPreview();
   } catch (err) {
     showStatus('Submission failed: ' + err.message + ' — check signal and try again.', false);
   } finally {
@@ -927,12 +993,12 @@ function renderResults(rowsData) {
   let html = `<thead><tr>
     <th>#</th><th>Variety</th><th>Planted</th><th>Harvests</th><th>First Cut</th><th>Last Cut</th>
     <th>TTH (days)</th><th>Window (days)</th><th>Avg Stem (in)</th><th>Total Stems</th>
-    <th>Short &lt;12"</th><th>Damaged</th><th>Losses %</th>
+    <th>Short &lt;12"</th><th>Damaged</th><th>Losses %</th><th>Photos</th>
   </tr></thead><tbody>`;
 
   const sortedLocs = [...locsWithData].sort((a, b) => a - b);
   if (!sortedLocs.length) {
-    html += '<tr><td colspan="13" style="padding:30px;text-align:center;color:#999;">No submissions yet. Use the Log Data tab to record your first harvest.</td></tr>';
+    html += '<tr><td colspan="14" style="padding:30px;text-align:center;color:#999;">No submissions yet. Use the Log Data tab to record your first harvest.</td></tr>';
   }
 
   sortedLocs.forEach(loc => {
@@ -966,6 +1032,14 @@ function renderResults(rowsData) {
       if (totalStems > 0) losses = ((shortS + damaged) / totalStems * 100).toFixed(1) + '%';
     }
 
+    // Photos: list per submission (harvest + planting), labeled with date
+    const allSubs = [...(byLoc[loc] || []), ...rowsData.filter(r => r.type === 'planting' && Number(r.loc) === loc)];
+    const photoHtml = allSubs
+      .filter(s => s.photos && s.photos.length)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+      .map(s => String(s.date).slice(5) + ': ' + s.photos.map((u, i) => `<a href="${u}" target="_blank" rel="noopener" title="Photo ${i+1} — ${s.date}">📷</a>`).join(''))
+      .join('<br>') || '—';
+
     html += `<tr>
       <td class="loc">${loc}</td>
       <td><strong>${v.name}</strong></td>
@@ -980,6 +1054,7 @@ function renderResults(rowsData) {
       <td class="num">${shortS}</td>
       <td class="num">${damaged}</td>
       <td class="num">${losses}</td>
+      <td class="photo-links">${photoHtml}</td>
     </tr>`;
   });
   html += '</tbody>';
