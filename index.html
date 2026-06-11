@@ -12,8 +12,8 @@
   .header h1 { font-size: 22px; margin-bottom: 4px; }
   .header p { font-size: 13px; opacity: 0.85; }
 
-  .tabs { display: flex; background: #3a6b1e; }
-  .tab { flex: 1; text-align: center; padding: 10px; color: white; cursor: pointer; font-size: 14px; font-weight: 600; border-bottom: 3px solid transparent; transition: 0.2s; }
+  .tabs { display: flex; background: #3a6b1e; flex-wrap: wrap; }
+  .tab { flex: 1; text-align: center; padding: 10px; color: white; cursor: pointer; font-size: 14px; font-weight: 600; border-bottom: 3px solid transparent; transition: 0.2s; min-width: 120px; }
   .tab:hover { background: rgba(255,255,255,0.1); }
   .tab.active { border-bottom-color: #ffd700; background: rgba(255,255,255,0.15); }
 
@@ -75,6 +75,9 @@
 
   .grid-scale { margin-top: 6px; font-size: 10px; color: #999; }
 
+  .log-btn { margin-top: 8px; padding: 8px 16px; background: #2d5016; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .log-btn:hover { background: #3a6b1e; }
+
   /* PLANTING GUIDE */
   .guide-table { width: 100%; border-collapse: collapse; font-size: 11px; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
   .guide-table th { background: #2d5016; color: white; padding: 8px 6px; text-align: left; font-size: 11px; position: sticky; top: 0; z-index: 2; }
@@ -86,30 +89,67 @@
   .search-bar input { width: 100%; padding: 10px 14px; border: 2px solid #ccc; border-radius: 6px; font-size: 14px; }
   .search-bar input:focus { outline: none; border-color: #2d5016; }
 
+  /* ===== DATA COLLECTION FORM ===== */
+  .form-wrap { max-width: 640px; margin: 0 auto; background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  .form-wrap h2 { font-size: 17px; color: #2d5016; margin-bottom: 12px; }
+  .type-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+  .type-toggle button { flex: 1; padding: 10px; border: 2px solid #ccc; background: white; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .type-toggle button.active { background: #2d5016; color: white; border-color: #2d5016; }
+  .fld { margin-bottom: 14px; }
+  .fld label { display: block; font-size: 12px; font-weight: 700; color: #555; margin-bottom: 4px; }
+  .fld input, .fld textarea, .fld select { width: 100%; padding: 10px; border: 2px solid #ccc; border-radius: 6px; font-size: 15px; }
+  .fld input:focus, .fld textarea:focus { outline: none; border-color: #2d5016; }
+  .fld .hint { font-size: 11px; color: #999; margin-top: 3px; }
+  .stem-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .stem-grid input { padding: 8px 4px; text-align: center; font-size: 15px; border: 2px solid #ccc; border-radius: 6px; width: 100%; }
+  .stem-avg { margin-top: 8px; font-size: 13px; font-weight: 700; color: #2d5016; background: #f0f7e6; padding: 8px 12px; border-radius: 6px; }
+  .stem-avg.warn { background: #fdf3e0; color: #a05c10; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .submit-btn { width: 100%; padding: 14px; background: #2d5016; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px; }
+  .submit-btn:hover { background: #3a6b1e; }
+  .submit-btn:disabled { background: #999; cursor: wait; }
+  .status-msg { margin-top: 12px; padding: 10px 14px; border-radius: 6px; font-size: 13px; display: none; }
+  .status-msg.ok { display: block; background: #e6f4e0; color: #2d5016; border: 1px solid #b8d8a8; }
+  .status-msg.err { display: block; background: #fde8e8; color: #a02020; border: 1px solid #e8b8b8; }
+  .plot-context { font-size: 12px; color: #666; background: #f0f7e6; padding: 8px 12px; border-radius: 6px; margin-top: 6px; display: none; }
+
+  /* ===== RESULTS ===== */
+  .results-wrap { max-width: 1200px; margin: 0 auto; }
+  .results-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+  .results-toolbar input { padding: 8px 12px; border: 2px solid #ccc; border-radius: 6px; font-size: 13px; flex: 1; min-width: 200px; }
+  .refresh-btn { padding: 8px 16px; background: #2d5016; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .results-table { width: 100%; border-collapse: collapse; font-size: 11px; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .results-table th { background: #2d5016; color: white; padding: 8px 6px; text-align: left; position: sticky; top: 0; }
+  .results-table td { padding: 6px; border-bottom: 1px solid #eee; }
+  .results-table tr:hover { background: #f0f7e6; }
+  .results-table .num { text-align: right; }
+  .badge-short { color: #a02020; font-weight: 700; }
+  .results-note { font-size: 11px; color: #888; margin-top: 10px; }
+
   @media print {
     .tabs, .compass, .search-bar, .bed-selector { display: none !important; }
     .view { display: block !important; page-break-after: always; }
     .plot { font-size: 7px !important; }
   }
 
-  /* Colors per crop type — muted earth tones */
-  .c-dahlia { background: #c9a59c; color: #3a342c; }
-  .c-scabiosa { background: #b3a1b5; color: #3a342c; }
-  .c-matricaria { background: #d8cda3; color: #3a342c; }
-  .c-dianthus { background: #cfa8a4; color: #3a342c; }
-  .c-snapdragon { background: #a3b4bd; color: #3a342c; }
-  .c-zinnia { background: #cdb185; color: #3a342c; }
-  .c-limonium { background: #a8bda6; color: #3a342c; }
-  .c-gomphrena { background: #c1abb8; color: #3a342c; }
-  .c-ageratum { background: #9aa9b5; color: #3a342c; }
-  .c-celosia { background: #c9a48c; color: #3a342c; }
-  .c-sorghum { background: #bcb295; color: #3a342c; }
-  .c-marigold { background: #c8aa63; color: #3a342c; }
-  .c-rudbeckia { background: #bcae72; color: #3a342c; }
-  .c-craspedia { background: #d3c486; color: #3a342c; }
-  .c-verbena { background: #b09fb0; color: #3a342c; }
-  .c-sunflower { background: #d3bf78; color: #3a342c; }
-  .c-kale { background: #9cb89e; color: #3a342c; }
+  /* Colors per crop type */
+  .c-dahlia { background: #e8a0b0; color: #4a1020; }
+  .c-scabiosa { background: #c8a0d8; color: #3a1050; }
+  .c-matricaria { background: #f0e8a0; color: #504810; }
+  .c-dianthus { background: #f0b0c0; color: #501828; }
+  .c-snapdragon { background: #a0c8e8; color: #103850; }
+  .c-zinnia { background: #e8c080; color: #504010; }
+  .c-limonium { background: #b0d8c0; color: #104828; }
+  .c-gomphrena { background: #d8b0d0; color: #401840; }
+  .c-ageratum { background: #90b8e0; color: #082848; }
+  .c-celosia { background: #e8b898; color: #502810; }
+  .c-sorghum { background: #c8c0a0; color: #383010; }
+  .c-marigold { background: #f0c840; color: #504008; }
+  .c-rudbeckia { background: #e0d060; color: #484008; }
+  .c-craspedia { background: #f0e070; color: #484010; }
+  .c-verbena { background: #c090d0; color: #381050; }
+  .c-sunflower { background: #f0d850; color: #504808; }
+  .c-kale { background: #88c8a0; color: #084028; }
   .c-empty { background: #e0ddd0; color: #999; }
 </style>
 </head>
@@ -124,6 +164,8 @@
   <div class="tab active" onclick="showView('overview')">Garden Overview</div>
   <div class="tab" onclick="showView('detail')">Bed Detail &amp; Spacing</div>
   <div class="tab" onclick="showView('guide')">Planting Guide Table</div>
+  <div class="tab" onclick="showView('log')">📋 Log Data</div>
+  <div class="tab" onclick="showView('results'); loadResults();">📊 Results</div>
 </div>
 
 <div class="compass"><span class="n">N</span><span class="s">S</span></div>
@@ -154,7 +196,98 @@
   </div>
 </div>
 
+<!-- ========== VIEW 4: LOG DATA ========== -->
+<div id="view-log" class="view">
+  <div class="form-wrap">
+    <h2>Data Collection</h2>
+    <div class="type-toggle">
+      <button id="btnHarvest" class="active" onclick="setFormType('harvest')">🌻 Harvest</button>
+      <button id="btnPlanting" onclick="setFormType('planting')">🌱 Planting Record</button>
+    </div>
+
+    <!-- Harvest: single plot picker -->
+    <div class="fld" id="fldPlotSingle">
+      <label>Variety / Plot #</label>
+      <input id="plotInput" list="plotList" placeholder="Type plot # or variety name..." oninput="showPlotContext()">
+      <datalist id="plotList"></datalist>
+      <div class="plot-context" id="plotContext"></div>
+    </div>
+
+    <!-- Planting: multi plot input -->
+    <div class="fld" id="fldPlotMulti" style="display:none;">
+      <label>Plot #s planted</label>
+      <input id="plotMultiInput" placeholder="e.g. 85-96 or 43,44,45">
+      <div class="hint">Use ranges (85-96) and/or commas. One record is saved per plot.</div>
+    </div>
+
+    <div class="fld">
+      <label id="dateLabel">Harvest Date</label>
+      <input type="date" id="subDate">
+    </div>
+
+    <!-- Harvest-only fields -->
+    <div id="harvestFields">
+      <div class="fld">
+        <label>Stem Lengths (inches) — measure up to 10 random stems, minimum 8</label>
+        <div class="stem-grid" id="stemGrid"></div>
+        <div class="stem-avg" id="stemAvg">No measurements yet</div>
+      </div>
+      <div class="two-col">
+        <div class="fld">
+          <label>Short Stems (&lt;12", unmarketable)</label>
+          <input type="number" id="shortStems" min="0" inputmode="numeric" placeholder="0">
+        </div>
+        <div class="fld">
+          <label>Damaged / Cull Stems</label>
+          <input type="number" id="damagedStems" min="0" inputmode="numeric" placeholder="0">
+        </div>
+      </div>
+      <div class="fld">
+        <label>Total Stems Harvested (this harvest, incl. culls)</label>
+        <input type="number" id="totalStems" min="0" inputmode="numeric" placeholder="e.g. 120">
+      </div>
+    </div>
+
+    <div class="fld">
+      <label>Notes (optional)</label>
+      <textarea id="subNotes" rows="2" placeholder="Bloom quality, pest pressure, weather..."></textarea>
+    </div>
+    <div class="fld">
+      <label>Your Name (optional)</label>
+      <input id="subName" placeholder="Who collected this data">
+    </div>
+
+    <button class="submit-btn" id="submitBtn" onclick="submitData()">Submit</button>
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+</div>
+
+<!-- ========== VIEW 5: RESULTS ========== -->
+<div id="view-results" class="view">
+  <div class="results-wrap">
+    <div class="results-toolbar">
+      <input type="text" id="resultsSearch" placeholder="Filter by variety, crop..." oninput="filterResults()">
+      <button class="refresh-btn" onclick="loadResults(true)">↻ Refresh</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="results-table" id="resultsTable">
+        <tbody><tr><td style="padding:30px;text-align:center;color:#999;">Loading…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="results-note">
+      Avg stem length pools all individual measurements across harvests. TTH = days from planting to first harvest.
+      Harvest window = days between first and last harvest. Losses % = (short + damaged) ÷ total stems.
+      Plant dates: pre-loaded from planting records (Wk 20 → May 21, Wk 22 → June 3) and updated by Planting Record submissions.
+    </div>
+  </div>
+</div>
+
 <script>
+// ============================================================
+// CONFIG — paste your Google Apps Script Web App URL here
+// ============================================================
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykWfOcdZX95H9c0e1xLeFts-TKogVxohPkWgNCrfDeOhiX_vTjbbv8E9W_GeeEjWxqQQ/exec";
+
 // ============================================================
 // MASTER DATA — all 108 positions
 // ============================================================
@@ -284,6 +417,17 @@ const varieties = [
 const vMap = {};
 varieties.forEach(v => vMap[v.loc] = v);
 
+// ============================================================
+// PRE-LOADED PLANT DATES (Wk 20 → 2026-05-21, Wk 22 → 2026-06-03)
+// Overridden by any "Planting Record" submissions in the sheet.
+// ============================================================
+const defaultPlantDates = {};
+(function() {
+  const rng = (a, b) => { const r = []; for (let i = a; i <= b; i++) r.push(i); return r; };
+  [...rng(1, 24), ...rng(30, 42), ...rng(73, 84)].forEach(l => defaultPlantDates[l] = '2026-05-21'); // Wk 20 wave
+  [58, 59, 60].forEach(l => defaultPlantDates[l] = '2026-06-03'); // Wk 22 late additions
+})();
+
 // Row definitions
 const rows = [
   {num:1, label:"Bed 1", season:"Cultivate & Summer wk 28+", north:[1,2,3,4,5,6,7,8,9,10,11,12], south:[60,59,58,57,56,55,54,53,52,51,50,49]},
@@ -295,20 +439,22 @@ const rows = [
 ];
 
 const cropColors = {
-  dahlia:"#c9a59c", scabiosa:"#b3a1b5", matricaria:"#d8cda3", dianthus:"#cfa8a4",
-  snapdragon:"#a3b4bd", zinnia:"#cdb185", limonium:"#a8bda6", gomphrena:"#c1abb8",
-  ageratum:"#9aa9b5", celosia:"#c9a48c", sorghum:"#bcb295", marigold:"#c8aa63",
-  rudbeckia:"#bcae72", craspedia:"#d3c486", verbena:"#b09fb0", sunflower:"#d3bf78", kale:"#9cb89e"
+  dahlia:"#e8a0b0", scabiosa:"#c8a0d8", matricaria:"#f0e8a0", dianthus:"#f0b0c0",
+  snapdragon:"#a0c8e8", zinnia:"#e8c080", limonium:"#b0d8c0", gomphrena:"#d8b0d0",
+  ageratum:"#90b8e0", celosia:"#e8b898", sorghum:"#c8c0a0", marigold:"#f0c840",
+  rudbeckia:"#e0d060", craspedia:"#f0e070", verbena:"#c090d0", sunflower:"#f0d850", kale:"#88c8a0"
 };
 
 // ============================================================
 // VIEW SWITCHING
 // ============================================================
+const viewOrder = ['overview', 'detail', 'guide', 'log', 'results'];
+
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('view-'+id).classList.add('active');
-  event.target.classList.add('active');
+  document.querySelectorAll('.tab')[viewOrder.indexOf(id)].classList.add('active');
 }
 
 // ============================================================
@@ -479,6 +625,7 @@ function showBed(num, side) {
     html += `</div></div>`;
 
     html += `<div class="grid-scale">Each dot = 1 plant position. Showing ${Math.min(4, bedLen)} ft of ${bedLen} ft bed section. Row ruler on left, column ruler on top (in feet).</div>`;
+    html += `<button class="log-btn" onclick="openForm(${v.loc})">📋 Log harvest data for #${v.loc}</button>`;
     html += `</div></div>`;
   });
 
@@ -495,28 +642,15 @@ function toggleGrid(header) {
 function goToDetail(loc) {
   // Figure out which bed this loc belongs to
   for (const r of rows) {
-    if (r.north.includes(loc)) {
-      showView2('detail');
-      showBed(r.num, 'N');
+    const side = r.north.includes(loc) ? 'N' : r.south.includes(loc) ? 'S' : null;
+    if (side) {
+      showView('detail');
+      showBed(r.num, side);
       // Open that specific variety
       setTimeout(() => {
         const sections = document.querySelectorAll('.variety-section');
         sections.forEach(s => {
-          if (s.querySelector('.variety-header').textContent.includes('#'+loc)) {
-            s.querySelector('.variety-header').click();
-            s.scrollIntoView({behavior:'smooth', block:'center'});
-          }
-        });
-      }, 100);
-      return;
-    }
-    if (r.south.includes(loc)) {
-      showView2('detail');
-      showBed(r.num, 'S');
-      setTimeout(() => {
-        const sections = document.querySelectorAll('.variety-section');
-        sections.forEach(s => {
-          if (s.querySelector('.variety-header').textContent.includes('#'+loc)) {
+          if (s.querySelector('.variety-header').textContent.includes('#'+loc+' ')) {
             s.querySelector('.variety-header').click();
             s.scrollIntoView({behavior:'smooth', block:'center'});
           }
@@ -525,13 +659,6 @@ function goToDetail(loc) {
       return;
     }
   }
-}
-
-function showView2(id) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('view-'+id).classList.add('active');
-  document.querySelectorAll('.tab')[id==='overview'?0:id==='detail'?1:2].classList.add('active');
 }
 
 // ============================================================
@@ -577,11 +704,303 @@ function filterGuide() {
 }
 
 // ============================================================
+// DATA COLLECTION FORM
+// ============================================================
+let formType = 'harvest';
+
+function buildForm() {
+  // Plot datalist
+  const dl = document.getElementById('plotList');
+  dl.innerHTML = varieties.map(v => `<option value="#${v.loc} — ${v.name}"></option>`).join('');
+
+  // 10 stem-length inputs
+  const sg = document.getElementById('stemGrid');
+  let html = '';
+  for (let i = 1; i <= 10; i++) {
+    html += `<input type="number" step="0.5" min="0" inputmode="decimal" class="stem-in" id="stem${i}" placeholder="${i}" oninput="updateStemAvg()">`;
+  }
+  sg.innerHTML = html;
+
+  // Default date = today
+  document.getElementById('subDate').value = new Date().toISOString().slice(0, 10);
+}
+
+function setFormType(t) {
+  formType = t;
+  document.getElementById('btnHarvest').classList.toggle('active', t === 'harvest');
+  document.getElementById('btnPlanting').classList.toggle('active', t === 'planting');
+  document.getElementById('harvestFields').style.display = t === 'harvest' ? '' : 'none';
+  document.getElementById('fldPlotSingle').style.display = t === 'harvest' ? '' : 'none';
+  document.getElementById('fldPlotMulti').style.display = t === 'planting' ? '' : 'none';
+  document.getElementById('dateLabel').textContent = t === 'harvest' ? 'Harvest Date' : 'Planting Date';
+}
+
+function openForm(loc) {
+  showView('log');
+  setFormType('harvest');
+  const v = vMap[loc];
+  document.getElementById('plotInput').value = `#${loc} — ${v.name}`;
+  showPlotContext();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function parseLoc(str) {
+  const m = String(str).trim().match(/^#?(\d{1,3})/);
+  if (!m) return null;
+  const loc = parseInt(m[1], 10);
+  return vMap[loc] ? loc : null;
+}
+
+function showPlotContext() {
+  const ctx = document.getElementById('plotContext');
+  const loc = parseLoc(document.getElementById('plotInput').value);
+  if (!loc) { ctx.style.display = 'none'; return; }
+  const v = vMap[loc];
+  const pd = defaultPlantDates[loc];
+  ctx.style.display = 'block';
+  ctx.innerHTML = `<strong>#${loc} ${v.name}</strong> · ${v.breeder} · ${v.qty} plants` +
+    (pd ? ` · pre-loaded plant date: ${pd}` : ' · no plant date on file yet — submit a Planting Record');
+}
+
+function getStemValues() {
+  const vals = [];
+  for (let i = 1; i <= 10; i++) {
+    const raw = document.getElementById('stem' + i).value;
+    if (raw !== '' && !isNaN(parseFloat(raw))) vals.push(parseFloat(raw));
+  }
+  return vals;
+}
+
+function updateStemAvg() {
+  const el = document.getElementById('stemAvg');
+  const vals = getStemValues();
+  if (!vals.length) { el.textContent = 'No measurements yet'; el.classList.remove('warn'); return; }
+  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+  el.textContent = `${vals.length} stem${vals.length > 1 ? 's' : ''} · average: ${avg.toFixed(1)}"`;
+  el.classList.toggle('warn', vals.length < 8);
+  if (vals.length < 8) el.textContent += ' — minimum 8 recommended';
+}
+
+function parseMultiLocs(str) {
+  const out = new Set();
+  String(str).split(',').forEach(part => {
+    part = part.trim();
+    if (!part) return;
+    const m = part.match(/^(\d{1,3})\s*-\s*(\d{1,3})$/);
+    if (m) {
+      for (let i = parseInt(m[1]); i <= parseInt(m[2]); i++) if (vMap[i]) out.add(i);
+    } else {
+      const n = parseInt(part.replace('#', ''), 10);
+      if (vMap[n]) out.add(n);
+    }
+  });
+  return [...out].sort((a, b) => a - b);
+}
+
+function showStatus(msg, ok) {
+  const el = document.getElementById('statusMsg');
+  el.className = 'status-msg ' + (ok ? 'ok' : 'err');
+  el.textContent = msg;
+}
+
+async function submitData() {
+  if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
+    showStatus('Setup needed: the Apps Script URL has not been added to this page yet.', false);
+    return;
+  }
+  const date = document.getElementById('subDate').value;
+  if (!date) { showStatus('Pick a date.', false); return; }
+
+  let payload;
+  if (formType === 'harvest') {
+    const loc = parseLoc(document.getElementById('plotInput').value);
+    if (!loc) { showStatus('Select a valid plot # from the list.', false); return; }
+    const stems = getStemValues();
+    const total = parseInt(document.getElementById('totalStems').value, 10);
+    if (isNaN(total) || total < 1) { showStatus('Enter total stems harvested.', false); return; }
+    if (stems.length > 0 && stems.length < 8) {
+      if (!confirm(`Only ${stems.length} stem lengths entered (8+ recommended). Submit anyway?`)) return;
+    }
+    const avg = stems.length ? stems.reduce((a, b) => a + b, 0) / stems.length : '';
+    payload = {
+      type: 'harvest',
+      entries: [{loc: loc, variety: vMap[loc].name}],
+      date: date,
+      stems: stems,
+      avgStem: avg === '' ? '' : Math.round(avg * 10) / 10,
+      short: parseInt(document.getElementById('shortStems').value, 10) || 0,
+      damaged: parseInt(document.getElementById('damagedStems').value, 10) || 0,
+      total: total,
+      notes: document.getElementById('subNotes').value.trim(),
+      submitter: document.getElementById('subName').value.trim()
+    };
+  } else {
+    const locs = parseMultiLocs(document.getElementById('plotMultiInput').value);
+    if (!locs.length) { showStatus('Enter valid plot #s (e.g. 85-96 or 43,44,45).', false); return; }
+    payload = {
+      type: 'planting',
+      entries: locs.map(l => ({loc: l, variety: vMap[l].name})),
+      date: date,
+      notes: document.getElementById('subNotes').value.trim(),
+      submitter: document.getElementById('subName').value.trim()
+    };
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  try {
+    const res = await fetch(SCRIPT_URL, {method: 'POST', body: JSON.stringify(payload)});
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || 'Server error');
+    cachedResults = null; // force refresh next time
+    if (formType === 'harvest') {
+      showStatus(`✓ Harvest saved for #${payload.entries[0].loc} ${payload.entries[0].variety} (${payload.total} stems${payload.avgStem !== '' ? ', avg ' + payload.avgStem + '"' : ''}).`, true);
+      // Clear measurement fields, keep plot + date for possible same-day entries
+      for (let i = 1; i <= 10; i++) document.getElementById('stem' + i).value = '';
+      ['shortStems', 'damagedStems', 'totalStems', 'subNotes'].forEach(id => document.getElementById(id).value = '');
+      updateStemAvg();
+    } else {
+      showStatus(`✓ Planting date ${payload.date} saved for ${payload.entries.length} plot(s): ${payload.entries.map(e => '#' + e.loc).join(', ')}.`, true);
+      document.getElementById('plotMultiInput').value = '';
+      document.getElementById('subNotes').value = '';
+    }
+  } catch (err) {
+    showStatus('Submission failed: ' + err.message + ' — check signal and try again.', false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+  }
+}
+
+// ============================================================
+// RESULTS
+// ============================================================
+let cachedResults = null;
+
+function parseDate(s) {
+  if (!s) return null;
+  const str = String(s).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return null;
+  return new Date(str + 'T12:00:00');
+}
+
+function daysBetween(a, b) {
+  return Math.round((b - a) / 86400000);
+}
+
+async function loadResults(force) {
+  const tbl = document.getElementById('resultsTable');
+  if (cachedResults && !force) { renderResults(cachedResults); return; }
+  if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
+    tbl.innerHTML = '<tbody><tr><td style="padding:30px;text-align:center;color:#999;">Setup needed: add the Apps Script URL to this page to enable results.</td></tr></tbody>';
+    return;
+  }
+  tbl.innerHTML = '<tbody><tr><td style="padding:30px;text-align:center;color:#999;">Loading data…</td></tr></tbody>';
+  try {
+    const res = await fetch(SCRIPT_URL);
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || 'Server error');
+    cachedResults = out.rows;
+    renderResults(out.rows);
+  } catch (err) {
+    tbl.innerHTML = `<tbody><tr><td style="padding:30px;text-align:center;color:#a02020;">Could not load data: ${err.message}</td></tr></tbody>`;
+  }
+}
+
+function renderResults(rowsData) {
+  // Plant dates: defaults overridden by latest planting submission per loc
+  const plantDates = Object.assign({}, defaultPlantDates);
+  rowsData.filter(r => r.type === 'planting').forEach(r => {
+    const existing = plantDates[r.loc];
+    if (!existing || String(r.date) >= String(existing)) plantDates[r.loc] = String(r.date).slice(0, 10);
+  });
+
+  // Group harvests by loc
+  const byLoc = {};
+  rowsData.filter(r => r.type === 'harvest').forEach(r => {
+    (byLoc[r.loc] = byLoc[r.loc] || []).push(r);
+  });
+
+  const locsWithData = new Set([...Object.keys(byLoc).map(Number), ...rowsData.filter(r => r.type === 'planting').map(r => Number(r.loc))]);
+
+  let html = `<thead><tr>
+    <th>#</th><th>Variety</th><th>Planted</th><th>Harvests</th><th>First Cut</th><th>Last Cut</th>
+    <th>TTH (days)</th><th>Window (days)</th><th>Avg Stem (in)</th><th>Total Stems</th>
+    <th>Short &lt;12"</th><th>Damaged</th><th>Losses %</th>
+  </tr></thead><tbody>`;
+
+  const sortedLocs = [...locsWithData].sort((a, b) => a - b);
+  if (!sortedLocs.length) {
+    html += '<tr><td colspan="13" style="padding:30px;text-align:center;color:#999;">No submissions yet. Use the Log Data tab to record your first harvest.</td></tr>';
+  }
+
+  sortedLocs.forEach(loc => {
+    const v = vMap[loc];
+    if (!v) return;
+    const harvests = (byLoc[loc] || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const pd = plantDates[loc] ? parseDate(plantDates[loc]) : null;
+
+    let first = '—', last = '—', tth = '—', windowD = '—', avgStr = '—', totalStems = '—', shortS = '—', damaged = '—', losses = '—', shortFlag = false;
+
+    if (harvests.length) {
+      const firstD = parseDate(harvests[0].date);
+      const lastD = parseDate(harvests[harvests.length - 1].date);
+      first = String(harvests[0].date).slice(0, 10);
+      last = String(harvests[harvests.length - 1].date).slice(0, 10);
+      if (pd && firstD) tth = daysBetween(pd, firstD);
+      if (firstD && lastD) windowD = daysBetween(firstD, lastD);
+
+      // Pool all individual stem measurements
+      const allStems = [];
+      harvests.forEach(h => (h.stems || []).forEach(s => { if (!isNaN(parseFloat(s))) allStems.push(parseFloat(s)); }));
+      if (allStems.length) {
+        const avg = allStems.reduce((a, b) => a + b, 0) / allStems.length;
+        avgStr = avg.toFixed(1);
+        shortFlag = avg < 12;
+      }
+
+      totalStems = harvests.reduce((a, h) => a + (Number(h.total) || 0), 0);
+      shortS = harvests.reduce((a, h) => a + (Number(h.short) || 0), 0);
+      damaged = harvests.reduce((a, h) => a + (Number(h.damaged) || 0), 0);
+      if (totalStems > 0) losses = ((shortS + damaged) / totalStems * 100).toFixed(1) + '%';
+    }
+
+    html += `<tr>
+      <td class="loc">${loc}</td>
+      <td><strong>${v.name}</strong></td>
+      <td>${plantDates[loc] || '—'}</td>
+      <td class="num">${harvests.length}</td>
+      <td>${first}</td>
+      <td>${last}</td>
+      <td class="num">${tth}</td>
+      <td class="num">${windowD}</td>
+      <td class="num${shortFlag ? ' badge-short' : ''}">${avgStr}</td>
+      <td class="num">${totalStems}</td>
+      <td class="num">${shortS}</td>
+      <td class="num">${damaged}</td>
+      <td class="num">${losses}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('resultsTable').innerHTML = html;
+  filterResults();
+}
+
+function filterResults() {
+  const q = document.getElementById('resultsSearch').value.toLowerCase();
+  document.querySelectorAll('#resultsTable tbody tr').forEach(r => {
+    r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+// ============================================================
 // INIT
 // ============================================================
 buildOverview();
 buildBedSelector();
 buildGuide();
+buildForm();
 </script>
 
 </body>
