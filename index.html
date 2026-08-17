@@ -111,6 +111,16 @@
   .status-msg { margin-top: 12px; padding: 10px 14px; border-radius: 6px; font-size: 13px; display: none; }
   .status-msg.ok { display: block; background: #e6f4e0; color: #2d5016; border: 1px solid #b8d8a8; }
   .status-msg.err { display: block; background: #fde8e8; color: #a02020; border: 1px solid #e8b8b8; }
+
+  /* SUBMIT CONFIRMATION TOAST */
+  .toast {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%) translateY(-16px);
+    max-width: min(92vw, 520px); padding: 12px 18px; border-radius: 8px;
+    background: #2d5016; color: #fff; font-size: 14px; font-weight: 600; line-height: 1.35;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3); z-index: 999; text-align: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .plot-context { font-size: 12px; color: #666; background: #f0f7e6; padding: 8px 12px; border-radius: 6px; margin-top: 6px; display: none; }
   .photo-btn { display: inline-block; padding: 10px 16px; background: white; border: 2px dashed #2d5016; color: #2d5016; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
   .photo-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -175,6 +185,8 @@
 </div>
 
 <div class="compass"><span class="n">N</span><span class="s">S</span></div>
+
+<div class="toast" id="toast"></div>
 
 <!-- ========== VIEW 1: OVERVIEW ========== -->
 <div id="view-overview" class="view active">
@@ -858,6 +870,37 @@ function renderPhotoPreview() {
   document.getElementById('photoHint').textContent = pendingPhotos.length ? pendingPhotos.length + ' photo(s) attached — uploaded on Submit' : '';
 }
 
+let toastTimer = null;
+function showToast(msg, ms) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), ms || 3500);
+}
+
+function clearStatus() {
+  const el = document.getElementById('statusMsg');
+  el.className = 'status-msg';
+  el.textContent = '';
+}
+
+// Called after a successful submission: wipe the form, bounce back to the map.
+function returnToMap(msg) {
+  clearStatus();
+  for (let i = 1; i <= 10; i++) document.getElementById('stem' + i).value = '';
+  ['shortStems', 'damagedStems', 'totalStems', 'subNotes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('plotInput').value = '';
+  document.getElementById('plotMultiInput').value = '';
+  document.getElementById('plotContext').style.display = 'none';
+  updateStemAvg();
+  pendingPhotos = [];
+  renderPhotoPreview();
+  showView('overview');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+  showToast(msg);
+}
+
 function showStatus(msg, ok) {
   const el = document.getElementById('statusMsg');
   el.className = 'status-msg ' + (ok ? 'ok' : 'err');
@@ -917,20 +960,18 @@ async function submitData() {
     const out = await res.json();
     if (!out.ok) throw new Error(out.error || 'Server error');
     cachedResults = null; // force refresh next time
-    const photoNote = payload.photos.length ? `, ${payload.photos.length} photo(s) uploaded` : '';
+    const photoNote = payload.photos.length ? ' · ' + payload.photos.length + ' photo(s)' : '';
+    let toastMsg;
     if (formType === 'harvest') {
-      showStatus(`✓ Harvest saved for #${payload.entries[0].loc} ${payload.entries[0].variety} (${payload.total} stems${payload.avgStem !== '' ? ', avg ' + payload.avgStem + '"' : ''}${photoNote}).`, true);
-      // Clear measurement fields, keep plot + date for possible same-day entries
-      for (let i = 1; i <= 10; i++) document.getElementById('stem' + i).value = '';
-      ['shortStems', 'damagedStems', 'totalStems', 'subNotes'].forEach(id => document.getElementById(id).value = '');
-      updateStemAvg();
+      toastMsg = '✓ Saved — #' + payload.entries[0].loc + ' ' + payload.entries[0].variety +
+        ' · ' + payload.total + ' stems' +
+        (payload.avgStem !== '' ? ' · avg ' + payload.avgStem + '″' : '') + photoNote;
     } else {
-      showStatus(`✓ Planting date ${payload.date} saved for ${payload.entries.length} plot(s): ${payload.entries.map(e => '#' + e.loc).join(', ')}${photoNote}.`, true);
-      document.getElementById('plotMultiInput').value = '';
-      document.getElementById('subNotes').value = '';
+      toastMsg = '✓ Saved — planting ' + payload.date + ' for ' + payload.entries.length +
+        ' plot(s): ' + payload.entries.map(e => '#' + e.loc).join(', ') + photoNote;
     }
-    pendingPhotos = [];
-    renderPhotoPreview();
+    // Clear the form and go back to the map so it is obvious the entry went through.
+    returnToMap(toastMsg);
   } catch (err) {
     showStatus('Submission failed: ' + err.message + ' — check signal and try again.', false);
   } finally {
