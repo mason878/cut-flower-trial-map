@@ -108,6 +108,8 @@
   .submit-btn { width: 100%; padding: 14px; background: #2d5016; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px; }
   .submit-btn:hover { background: #3a6b1e; }
   .submit-btn:disabled { background: #999; cursor: wait; }
+  .queue-banner { margin-bottom: 14px; padding: 10px 14px; border-radius: 6px; font-size: 13px; line-height: 1.4; background: #fdf3e0; color: #7a4a08; border: 1px solid #e8cfa0; }
+  .queue-banner button { margin-left: 8px; padding: 5px 12px; border: none; border-radius: 5px; background: #7a4a08; color: white; font-size: 12px; font-weight: 700; cursor: pointer; }
   .status-msg { margin-top: 12px; padding: 10px 14px; border-radius: 6px; font-size: 13px; display: none; }
   .status-msg.ok { display: block; background: #e6f4e0; color: #2d5016; border: 1px solid #b8d8a8; }
   .status-msg.err { display: block; background: #fde8e8; color: #a02020; border: 1px solid #e8b8b8; }
@@ -218,6 +220,7 @@
 <div id="view-log" class="view">
   <div class="form-wrap">
     <h2>Data Collection</h2>
+    <div class="queue-banner" id="queueBanner" style="display:none;"></div>
     <div class="type-toggle">
       <button id="btnHarvest" class="active" onclick="setFormType('harvest')">🌻 Harvest</button>
       <button id="btnPlanting" onclick="setFormType('planting')">🌱 Planting Record</button>
@@ -314,6 +317,27 @@
 // CONFIG
 // ============================================================
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykWfOcdZX95H9c0e1xLeFts-TKogVxohPkWgNCrfDeOhiX_vTjbbv8E9W_GeeEjWxqQQ/exec";
+
+// ---- Reliability settings (added 2026-08-24) ----------------
+// Measured against the live endpoint: a submission with no photos completes in
+// ~2.3s; the same submission with 2 photos at the old 1600px/q0.75 settings
+// took 18.2s and a 750KB body. On weak signal that long upload is what was
+// producing "Submission failed" — and because the row often DID land before the
+// connection died, blind retries created duplicate records in the sheet.
+const PHOTO_MAX_PX      = 1200;   // was 1600
+const PHOTO_QUALITY     = 0.6;    // was 0.75
+const PHOTO_MAX_COUNT   = 4;
+const TIMEOUT_BASE_MS   = 30000;  // allowance for the record itself
+const TIMEOUT_PER_PHOTO = 20000;  // added per attached photo
+const TIMEOUT_CAP_MS    = 120000;
+const QUEUE_KEY         = 'gl_cutflower_queue_v1';
+const QUEUE_MAX_BYTES   = 3000000; // ~3MB ceiling for offline storage
+
+// Two-stage upload: send the record first (fast, reliable), then attach photos
+// in follow-up calls. This requires the doPost() addition in
+// apps-script-additions.gs. Leave false until that is pasted into the Apps
+// Script project and redeployed, otherwise photo calls would create junk rows.
+const PHOTO_ATTACH_ENABLED = false;
 
 // ============================================================
 // MASTER DATA — all 108 positions
@@ -827,20 +851,34 @@ function parseMultiLocs(str) {
 // ---- Photos ----
 let pendingPhotos = [];
 
+function drawScaled(img, max) {
+  let w = img.width, h = img.height;
+  if (Math.max(w, h) > max) { const s = max / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(img, 0, 0, w, h);
+  return c;
+}
+
 function compressImage(file) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      const max = 1600;
-      let w = img.width, h = img.height;
-      if (Math.max(w, h) > max) { const s = max / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
-      const c = document.createElement('canvas');
-      c.width = w; c.height = h;
-      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      // Upload copy: 1200px / q0.6 — plenty for trial evaluation, roughly half
+      // the bytes of the old 1600px / q0.75 setting.
+      const dataUrl = drawScaled(img, PHOTO_MAX_PX).toDataURL('image/jpeg', PHOTO_QUALITY);
+      // Preview copy: small and separate, so the on-page thumbnail and the
+      // offline queue are not carrying a full-size base64 string around.
+      const thumb = drawScaled(img, 200).toDataURL('image/jpeg', 0.5);
       URL.revokeObjectURL(url);
-      const dataUrl = c.toDataURL('image/jpeg', 0.75);
-      resolve({name: (file.name || 'photo.jpg').replace(/[^\w.\-]/g, '_'), data: dataUrl.split(',')[1], thumb: dataUrl});
+      const data = dataUrl.split(',')[1];
+      resolve({
+        name: (file.name || 'photo.jpg').replace(/[^\w.\-]/g, '_'),
+        data: data,
+        thumb: thumb,
+        kb: Math.round(data.length / 1024)
+      });
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image')); };
     img.src = url;
@@ -848,9 +886,9 @@ function compressImage(file) {
 }
 
 async function handlePhotos(files) {
-  const room = 4 - pendingPhotos.length;
+  const room = PHOTO_MAX_COUNT - pendingPhotos.length;
   const toAdd = [...files].slice(0, room);
-  if (files.length > room) showStatus('Max 4 photos per submission — extras skipped.', false);
+  if (files.length > room) showStatus('Max ' + PHOTO_MAX_COUNT + ' photos per submission — extras skipped.', false);
   for (const f of toAdd) {
     try { pendingPhotos.push(await compressImage(f)); }
     catch (e) { showStatus('Could not process ' + f.name, false); }
@@ -867,7 +905,11 @@ function removePhoto(i) {
 function renderPhotoPreview() {
   document.getElementById('photoPreview').innerHTML = pendingPhotos.map((p, i) =>
     `<div class="photo-thumb"><img src="${p.thumb}" alt=""><button type="button" onclick="removePhoto(${i})">×</button></div>`).join('');
-  document.getElementById('photoHint').textContent = pendingPhotos.length ? pendingPhotos.length + ' photo(s) attached — uploaded on Submit' : '';
+  const totalKB = pendingPhotos.reduce((a, p) => a + (p.kb || 0), 0);
+  document.getElementById('photoHint').textContent = pendingPhotos.length
+    ? pendingPhotos.length + ' photo(s) attached · ~' + totalKB + ' KB — uploaded on Submit' +
+      (totalKB > 1200 ? ' · large upload, stay on this screen until it finishes' : '')
+    : '';
 }
 
 let toastTimer = null;
@@ -886,7 +928,7 @@ function clearStatus() {
 }
 
 // Called after a successful submission: wipe the form, bounce back to the map.
-function returnToMap(msg) {
+function returnToMap(msg, ms) {
   clearStatus();
   for (let i = 1; i <= 10; i++) document.getElementById('stem' + i).value = '';
   ['shortStems', 'damagedStems', 'totalStems', 'subNotes'].forEach(id => document.getElementById(id).value = '');
@@ -898,13 +940,144 @@ function returnToMap(msg) {
   renderPhotoPreview();
   showView('overview');
   window.scrollTo({top: 0, behavior: 'smooth'});
-  showToast(msg);
+  showToast(msg, ms);
 }
 
 function showStatus(msg, ok) {
   const el = document.getElementById('statusMsg');
   el.className = 'status-msg ' + (ok ? 'ok' : 'err');
   el.textContent = msg;
+}
+
+// ============================================================
+// TRANSPORT — timeout, verify-before-retry, offline queue
+// ============================================================
+
+function newSubmissionId() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+function timeoutFor(payload) {
+  const n = (payload.photos || []).length;
+  return Math.min(TIMEOUT_BASE_MS + n * TIMEOUT_PER_PHOTO, TIMEOUT_CAP_MS);
+}
+
+// POST with a real deadline. Without this the request could hang until the
+// browser gave up on its own, which on a phone means the grower stares at
+// "Submitting…" with no idea whether the record landed.
+async function postPayload(payload) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutFor(payload));
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      signal: ctrl.signal
+    });
+    const text = await res.text();
+    let out;
+    try { out = JSON.parse(text); }
+    catch (e) {
+      // Apps Script returns an HTML error page when the script itself throws.
+      throw new Error('Server returned an error page, not data (HTTP ' + res.status + ')');
+    }
+    if (!out.ok) throw new Error(out.error || 'Server error');
+    return out;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Fingerprint used to recognise our own record in the feed.
+function rowKey(o) {
+  return [o.type, o.loc, String(o.date).slice(0, 10), o.total || 0,
+          o.short || 0, o.damaged || 0, (o.stems || []).join('|'),
+          o.submitter || '', o.notes || ''].join('~');
+}
+
+// The important half of the fix: after a failed submission, ASK THE SHEET
+// whether the record actually landed before resubmitting. The old code retried
+// blind, which is how 16 duplicate rows ended up in the data.
+async function alreadyLanded(payload) {
+  try {
+    const res = await fetch(SCRIPT_URL, {cache: 'no-store'});
+    const out = await res.json();
+    if (!out.ok) return false;
+    const want = payload.entries.map(e => rowKey({
+      type: payload.type, loc: e.loc, date: payload.date,
+      total: payload.total, short: payload.short, damaged: payload.damaged,
+      stems: payload.stems, submitter: payload.submitter, notes: payload.notes
+    }));
+    const have = new Set(out.rows.map(r => rowKey(r)));
+    return want.every(k => have.has(k));
+  } catch (e) {
+    return false; // can't reach the sheet — assume not saved, queue it
+  }
+}
+
+// ---- Offline queue ----
+function queueRead() {
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+
+function queueWrite(arr) {
+  try { localStorage.setItem(QUEUE_KEY, JSON.stringify(arr)); return true; }
+  catch (e) { return false; }
+}
+
+// Store the record no matter what. If photos push it past the storage ceiling,
+// drop the photos and keep the numbers — re-shooting a photo is cheap, and
+// re-measuring eight stems on a plot already cut is not possible.
+function queueAdd(payload) {
+  const base = queueRead();
+  const withPhotos = base.concat([payload]);
+  if (JSON.stringify(withPhotos).length <= QUEUE_MAX_BYTES && queueWrite(withPhotos)) {
+    renderQueueBanner();
+    return 'full';
+  }
+  const stripped = Object.assign({}, payload, {photos: [], photosDropped: (payload.photos || []).length});
+  queueWrite(base.concat([stripped]));
+  renderQueueBanner();
+  return 'stripped';
+}
+
+function renderQueueBanner() {
+  const el = document.getElementById('queueBanner');
+  if (!el) return;
+  const n = queueRead().length;
+  if (!n) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<strong>' + n + ' unsent record' + (n > 1 ? 's' : '') + '</strong> saved on this phone. ' +
+    'They will send themselves when signal returns. ' +
+    '<button type="button" onclick="flushQueue(true)">Retry now</button>';
+}
+
+let flushing = false;
+async function flushQueue(manual) {
+  if (flushing) return;
+  const arr = queueRead();
+  if (!arr.length) { if (manual) showToast('Nothing waiting to send.'); return; }
+  flushing = true;
+  let sent = 0;
+  try {
+    while (queueRead().length) {
+      const q = queueRead();
+      const payload = q[0];
+      try {
+        if (!(await alreadyLanded(payload))) await postPayload(payload);
+        q.shift(); queueWrite(q); sent++; renderQueueBanner();
+      } catch (e) {
+        break; // still no luck — leave the rest queued
+      }
+    }
+  } finally {
+    flushing = false;
+    renderQueueBanner();
+    if (sent) { cachedResults = null; showToast('✓ Sent ' + sent + ' queued record' + (sent > 1 ? 's' : '') + '.'); }
+    else if (manual) showToast('Still no connection — records are safe, will retry.');
+  }
 }
 
 async function submitData() {
@@ -928,6 +1101,7 @@ async function submitData() {
     const avg = stems.length ? stems.reduce((a, b) => a + b, 0) / stems.length : '';
     payload = {
       type: 'harvest',
+      submissionId: newSubmissionId(),
       entries: [{loc: loc, variety: vMap[loc].name}],
       date: date,
       stems: stems,
@@ -944,6 +1118,7 @@ async function submitData() {
     if (!locs.length) { showStatus('Enter valid plot #s (e.g. 85-96 or 43,44,45).', false); return; }
     payload = {
       type: 'planting',
+      submissionId: newSubmissionId(),
       entries: locs.map(l => ({loc: l, variety: vMap[l].name})),
       date: date,
       notes: document.getElementById('subNotes').value.trim(),
@@ -953,27 +1128,70 @@ async function submitData() {
   }
 
   const btn = document.getElementById('submitBtn');
+  const photoCount = payload.photos.length;
   btn.disabled = true;
-  btn.textContent = payload.photos.length ? 'Uploading data + photos…' : 'Submitting…';
-  try {
-    const res = await fetch(SCRIPT_URL, {method: 'POST', body: JSON.stringify(payload)});
-    const out = await res.json();
-    if (!out.ok) throw new Error(out.error || 'Server error');
-    cachedResults = null; // force refresh next time
-    const photoNote = payload.photos.length ? ' · ' + payload.photos.length + ' photo(s)' : '';
-    let toastMsg;
+  btn.textContent = photoCount ? 'Uploading data + photos…' : 'Submitting…';
+  clearStatus();
+
+  const successToast = (extra) => {
+    const photoNote = photoCount ? ' · ' + photoCount + ' photo(s)' : '';
     if (formType === 'harvest') {
-      toastMsg = '✓ Saved — #' + payload.entries[0].loc + ' ' + payload.entries[0].variety +
+      return '✓ Saved — #' + payload.entries[0].loc + ' ' + payload.entries[0].variety +
         ' · ' + payload.total + ' stems' +
-        (payload.avgStem !== '' ? ' · avg ' + payload.avgStem + '″' : '') + photoNote;
-    } else {
-      toastMsg = '✓ Saved — planting ' + payload.date + ' for ' + payload.entries.length +
-        ' plot(s): ' + payload.entries.map(e => '#' + e.loc).join(', ') + photoNote;
+        (payload.avgStem !== '' ? ' · avg ' + payload.avgStem + '″' : '') + photoNote + (extra || '');
     }
-    // Clear the form and go back to the map so it is obvious the entry went through.
-    returnToMap(toastMsg);
+    return '✓ Saved — planting ' + payload.date + ' for ' + payload.entries.length +
+      ' plot(s): ' + payload.entries.map(e => '#' + e.loc).join(', ') + photoNote + (extra || '');
+  };
+
+  try {
+    if (PHOTO_ATTACH_ENABLED && photoCount) {
+      // Two-stage: land the numbers first, then attach photos one at a time.
+      // A photo failure can no longer cost you the harvest record.
+      const photos = payload.photos;
+      await postPayload(Object.assign({}, payload, {photos: []}));
+      let ok = 0;
+      for (let i = 0; i < photos.length; i++) {
+        btn.textContent = 'Photo ' + (i + 1) + ' of ' + photos.length + '…';
+        try {
+          await postPayload({type: 'photo-attach', submissionId: payload.submissionId, photo: photos[i]});
+          ok++;
+        } catch (e) { /* record is already safe; keep going */ }
+      }
+      cachedResults = null;
+      returnToMap(successToast(ok < photos.length ? ' · ' + (photos.length - ok) + ' photo(s) did not upload' : ''));
+      return;
+    }
+
+    await postPayload(payload);
+    cachedResults = null; // force refresh next time
+    returnToMap(successToast());
+
   } catch (err) {
-    showStatus('Submission failed: ' + err.message + ' — check signal and try again.', false);
+    const aborted = err.name === 'AbortError';
+    btn.textContent = 'Checking…';
+    // Before doing anything else, find out whether it actually saved.
+    if (await alreadyLanded(payload)) {
+      cachedResults = null;
+      returnToMap(successToast(' (already saved — no duplicate created)'));
+      return;
+    }
+    // Genuinely not saved. One clean retry, then queue it.
+    btn.textContent = 'Retrying…';
+    try {
+      await postPayload(payload);
+      cachedResults = null;
+      returnToMap(successToast(' (sent on retry)'));
+      return;
+    } catch (err2) {
+      const how = queueAdd(payload);
+      const lead = aborted ? 'Upload timed out — ' : 'No connection — ';
+      const tail = how === 'stripped'
+        ? 'your numbers are held on this phone and will send themselves. Photos were too large to hold — re-add them later.'
+        : 'this record is held on this phone and will send itself when signal returns.';
+      returnToMap('⏳ ' + lead + tail + ' (' + queueRead().length + ' waiting)', 9000);
+      return;
+    }
   } finally {
     btn.disabled = false;
     btn.textContent = 'Submit';
@@ -1117,6 +1335,22 @@ buildOverview();
 buildBedSelector();
 buildGuide();
 buildForm();
+renderQueueBanner();
+
+// Anything held offline goes out as soon as there is a connection again —
+// on load, when the phone reports it is back online, and when the grower
+// brings the tab back to the foreground.
+if (queueRead().length) flushQueue(false);
+window.addEventListener('online', () => flushQueue(false));
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && queueRead().length) flushQueue(false);
+});
+
+// Warn before navigating away mid-upload.
+window.addEventListener('beforeunload', (e) => {
+  const btn = document.getElementById('submitBtn');
+  if (btn && btn.disabled) { e.preventDefault(); e.returnValue = ''; }
+});
 </script>
 
 </body>
