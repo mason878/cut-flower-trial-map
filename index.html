@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <title>Green Legacy 2026 Cut Flower Trial Garden Map</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -108,6 +110,9 @@
   .submit-btn { width: 100%; padding: 14px; background: #2d5016; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px; }
   .submit-btn:hover { background: #3a6b1e; }
   .submit-btn:disabled { background: #999; cursor: wait; }
+  .ver-chip { display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 10px; background: rgba(255,255,255,0.18); font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
+  .update-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 16px; background: #1f3a0f; color: #fff; font-size: 13px; line-height: 1.4; text-align: center; z-index: 500; box-shadow: 0 -2px 10px rgba(0,0,0,0.3); }
+  .update-bar button { margin-left: 8px; padding: 6px 14px; border: none; border-radius: 5px; background: #ffd700; color: #2d5016; font-size: 13px; font-weight: 700; cursor: pointer; }
   .queue-banner { margin-bottom: 14px; padding: 10px 14px; border-radius: 6px; font-size: 13px; line-height: 1.4; background: #fdf3e0; color: #7a4a08; border: 1px solid #e8cfa0; }
   .queue-banner button { margin-left: 8px; padding: 5px 12px; border: none; border-radius: 5px; background: #7a4a08; color: white; font-size: 12px; font-weight: 700; cursor: pointer; }
   .status-msg { margin-top: 12px; padding: 10px 14px; border-radius: 6px; font-size: 13px; display: none; }
@@ -175,7 +180,7 @@
 
 <div class="header">
   <h1>Green Legacy — Summer 2026 Cut Flower Trial Garden</h1>
-  <p>12 Beds (1–6 North &amp; 1–6 South) · 3 ft wide × ~100 ft long · 5 ft walkways</p>
+  <p>12 Beds (1–6 North &amp; 1–6 South) · 3 ft wide × ~100 ft long · 5 ft walkways <span class="ver-chip" id="verChip"></span></p>
 </div>
 
 <div class="tabs">
@@ -318,6 +323,14 @@
 // CONFIG
 // ============================================================
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykWfOcdZX95H9c0e1xLeFts-TKogVxohPkWgNCrfDeOhiX_vTjbbv8E9W_GeeEjWxqQQ/exec";
+
+// ============================================================
+// !!! BUMP THIS ON EVERY DEPLOY !!!
+// The update check reads this same line straight out of the copy on the server
+// and compares it to the copy running on the phone. If you change the file and
+// forget to change this, phones will keep running the old version forever.
+// ============================================================
+const APP_VERSION = '2026-08-25.1';
 
 // ---- Reliability settings (added 2026-08-24) ----------------
 // Measured against the live endpoint: a submission with no photos completes in
@@ -1369,6 +1382,78 @@ function filterResults() {
 }
 
 // ============================================================
+// SELF-UPDATE
+// ============================================================
+// GitHub Pages lets browsers cache the page, and a phone with the app saved to
+// its home screen can hold a stale copy for a long time. So on open we ask the
+// server what version it has and, if it is newer, reload to a version-stamped
+// URL the cache cannot satisfy.
+//
+// Safety rules, because a bad update check is worse than a stale app:
+//   - never reload while a submission is in flight or the form has data in it
+//   - never reload twice for the same version (no reload loops)
+//   - stay silent when offline; the running version keeps working
+
+function runningVersion() {
+  return APP_VERSION;
+}
+
+function formHasWork() {
+  const ids = ['plotInput', 'plotMultiInput', 'shortStems', 'damagedStems', 'totalStems', 'subNotes'];
+  if (ids.some(id => (document.getElementById(id).value || '').trim() !== '')) return true;
+  for (let i = 1; i <= 10; i++) if (document.getElementById('stem' + i).value !== '') return true;
+  if (pendingPhotos.length) return true;
+  const btn = document.getElementById('submitBtn');
+  if (btn && btn.disabled) return true;   // mid-submit
+  if (typeof flushing !== 'undefined' && flushing) return true; // mid-queue-flush
+  return false;
+}
+
+function applyUpdate(version) {
+  location.replace(location.pathname + '?v=' + encodeURIComponent(version));
+}
+
+function showUpdateBar(version) {
+  let el = document.getElementById('updateBar');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'updateBar';
+    el.className = 'update-bar';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = 'A newer version is available. Finish or clear this entry, then ' +
+    '<button type="button" id="updateNowBtn">load it</button>';
+  el.style.display = 'block';
+  document.getElementById('updateNowBtn').onclick = () => applyUpdate(version);
+}
+
+let lastUpdateCheck = 0;
+async function checkForUpdate() {
+  if (Date.now() - lastUpdateCheck < 120000) return;   // at most every 2 min
+  lastUpdateCheck = Date.now();
+  try {
+    const res = await fetch(location.pathname + '?vcheck=' + Date.now(), {cache: 'no-store'});
+    if (!res.ok) return;
+    const text = await res.text();
+    // Key is assembled in pieces so this lookup cannot match its own source.
+    const key = 'const APP_' + 'VERSION = ';
+    const at = text.indexOf(key);
+    if (at < 0) return;
+    const start = at + key.length + 1;
+    const end = text.indexOf("'", start);
+    if (end < 0) return;
+    const latest = text.slice(start, end);
+    if (!latest || latest === runningVersion()) return;
+    if (sessionStorage.getItem('gl_update_seen') === latest) return; // already handled
+    sessionStorage.setItem('gl_update_seen', latest);
+    if (formHasWork()) { showUpdateBar(latest); return; }
+    applyUpdate(latest);
+  } catch (e) {
+    // Offline or blocked — keep running what we have.
+  }
+}
+
+// ============================================================
 // INIT
 // ============================================================
 buildOverview();
@@ -1376,6 +1461,13 @@ buildBedSelector();
 buildGuide();
 buildForm();
 renderQueueBanner();
+document.getElementById('verChip').textContent = 'v ' + APP_VERSION;
+
+// Check for a newer version on open, and again whenever the grower comes back
+// to the tab (phones keep these apps suspended for days).
+checkForUpdate();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+window.addEventListener('online', () => checkForUpdate());
 
 // Anything held offline goes out as soon as there is a connection again —
 // on load, when the phone reports it is back online, and when the grower
