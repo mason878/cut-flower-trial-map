@@ -223,7 +223,8 @@
     <div class="queue-banner" id="queueBanner" style="display:none;"></div>
     <div class="type-toggle">
       <button id="btnHarvest" class="active" onclick="setFormType('harvest')">🌻 Harvest</button>
-      <button id="btnPlanting" onclick="setFormType('planting')">🌱 Planting Record</button>
+      <button id="btnPlanting" onclick="setFormType('planting')">🌱 Planting</button>
+      <button id="btnPhoto" onclick="setFormType('photo')">📷 Photos</button>
     </div>
 
     <!-- Harvest: single plot picker -->
@@ -270,7 +271,7 @@
     </div>
 
     <div class="fld">
-      <label>Photos (optional, up to 4 — saved to Drive, linked to this submission)</label>
+      <label id="photoLabel">Photos (optional, up to 4 — saved to Drive, linked to this submission)</label>
       <label class="photo-btn" for="photoInput">📷 Add photos</label>
       <input type="file" id="photoInput" accept="image/*" multiple style="display:none;" onchange="handlePhotos(this.files)">
       <div class="photo-preview" id="photoPreview"></div>
@@ -307,7 +308,7 @@
       Avg stem length pools all individual measurements across harvests. TTH = days from planting to first harvest.
       Harvest window = days between first and last harvest. Losses % = (short + damaged) ÷ total stems.
       Plant dates: pre-loaded from planting records (Wk 20 → May 21, Wk 22 → June 3) and updated by Planting Record submissions.
-      📷 opens the photo in Google Drive.
+      📷 opens the photo in Google Drive. Photo-only entries add pictures to a plot without touching its yield, TTH or loss figures.
     </div>
   </div>
 </div>
@@ -780,10 +781,25 @@ function setFormType(t) {
   formType = t;
   document.getElementById('btnHarvest').classList.toggle('active', t === 'harvest');
   document.getElementById('btnPlanting').classList.toggle('active', t === 'planting');
+  document.getElementById('btnPhoto').classList.toggle('active', t === 'photo');
   document.getElementById('harvestFields').style.display = t === 'harvest' ? '' : 'none';
-  document.getElementById('fldPlotSingle').style.display = t === 'harvest' ? '' : 'none';
+  // Harvest and photo entries are both single-plot; planting takes a list.
+  document.getElementById('fldPlotSingle').style.display = t === 'planting' ? 'none' : '';
   document.getElementById('fldPlotMulti').style.display = t === 'planting' ? '' : 'none';
-  document.getElementById('dateLabel').textContent = t === 'harvest' ? 'Harvest Date' : 'Planting Date';
+  document.getElementById('dateLabel').textContent =
+    t === 'harvest' ? 'Harvest Date' : t === 'planting' ? 'Planting Date' : 'Photo Date';
+  document.getElementById('photoLabel').textContent = t === 'photo'
+    ? 'Photos (required, up to ' + PHOTO_MAX_COUNT + ' — saved to Drive)'
+    : 'Photos (optional, up to ' + PHOTO_MAX_COUNT + ' — saved to Drive, linked to this submission)';
+  document.getElementById('submitBtn').textContent = submitLabel();
+  clearStatus();
+}
+
+// Photo-only entries record pictures against a plot and nothing else. They are
+// stored with type 'photo', which the Results table ignores for yield, TTH and
+// loss math — so a photo can never move a harvest number.
+function submitLabel() {
+  return formType === 'photo' ? 'Upload photos' : 'Submit';
 }
 
 function openForm(loc) {
@@ -1113,6 +1129,19 @@ async function submitData() {
       submitter: document.getElementById('subName').value.trim(),
       photos: pendingPhotos.map(p => ({name: p.name, data: p.data}))
     };
+  } else if (formType === 'photo') {
+    const loc = parseLoc(document.getElementById('plotInput').value);
+    if (!loc) { showStatus('Select a valid plot # from the list.', false); return; }
+    if (!pendingPhotos.length) { showStatus('Add at least one photo before uploading.', false); return; }
+    payload = {
+      type: 'photo',
+      submissionId: newSubmissionId(),
+      entries: [{loc: loc, variety: vMap[loc].name}],
+      date: date,
+      notes: document.getElementById('subNotes').value.trim(),
+      submitter: document.getElementById('subName').value.trim(),
+      photos: pendingPhotos.map(p => ({name: p.name, data: p.data}))
+    };
   } else {
     const locs = parseMultiLocs(document.getElementById('plotMultiInput').value);
     if (!locs.length) { showStatus('Enter valid plot #s (e.g. 85-96 or 43,44,45).', false); return; }
@@ -1139,6 +1168,10 @@ async function submitData() {
       return '✓ Saved — #' + payload.entries[0].loc + ' ' + payload.entries[0].variety +
         ' · ' + payload.total + ' stems' +
         (payload.avgStem !== '' ? ' · avg ' + payload.avgStem + '″' : '') + photoNote + (extra || '');
+    }
+    if (formType === 'photo') {
+      return '✓ Saved — ' + photoCount + ' photo(s) on ' + payload.date + ' for #' +
+        payload.entries[0].loc + ' ' + payload.entries[0].variety + (extra || '');
     }
     return '✓ Saved — planting ' + payload.date + ' for ' + payload.entries.length +
       ' plot(s): ' + payload.entries.map(e => '#' + e.loc).join(', ') + photoNote + (extra || '');
@@ -1194,7 +1227,7 @@ async function submitData() {
     }
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Submit';
+    btn.textContent = submitLabel();
   }
 }
 
@@ -1247,7 +1280,13 @@ function renderResults(rowsData) {
     (byLoc[r.loc] = byLoc[r.loc] || []).push(r);
   });
 
-  const locsWithData = new Set([...Object.keys(byLoc).map(Number), ...rowsData.filter(r => r.type === 'planting').map(r => Number(r.loc))]);
+  const locsWithData = new Set([
+    ...Object.keys(byLoc).map(Number),
+    ...rowsData.filter(r => r.type === 'planting').map(r => Number(r.loc)),
+    // A plot with nothing but photo entries still earns a row, or its pictures
+    // would be invisible.
+    ...rowsData.filter(r => r.type === 'photo').map(r => Number(r.loc))
+  ]);
 
   let html = `<thead><tr>
     <th>#</th><th>Variety</th><th>Planted</th><th>Harvests</th><th>First Cut</th><th>Last Cut</th>
@@ -1292,7 +1331,8 @@ function renderResults(rowsData) {
     }
 
     // Photos: list per submission (harvest + planting), labeled with date
-    const allSubs = [...(byLoc[loc] || []), ...rowsData.filter(r => r.type === 'planting' && Number(r.loc) === loc)];
+    const allSubs = [...(byLoc[loc] || []),
+      ...rowsData.filter(r => (r.type === 'planting' || r.type === 'photo') && Number(r.loc) === loc)];
     const photoHtml = allSubs
       .filter(s => s.photos && s.photos.length)
       .sort((a, b) => String(a.date).localeCompare(String(b.date)))
